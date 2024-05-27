@@ -267,21 +267,21 @@ main (int argc, char *argv[])
             << std::endl;
 
   // Gather results in CSV format
-  // TODO output
-//  std::ostringstream csvOutput;
-//  csvOutput << mobilityModel << ',' << wifiManagerName << ',' << delta << ',' << interval << ','
-//            << velocity << ',' << distance << ",," << nWifi << ',' << nWifiReal << ','
-//            << RngSeedManager::GetRun () << ',' << totalThr << std::endl;
-//
-//  // Print results to std output
-//  std::cout << "mobility,manager,delta,interval,velocity,distance,time,nWifi,nWifiReal,seed,throughput"
-//            << std::endl
-//            << csvOutput.str ();
+  // TODO implement latency and PLR
+  std::ostringstream csvOutput;
+  csvOutput << agentName << "," << dataRate << "," << distance << "," << nWifi << "," << nWifiReal << ","
+            << RngSeedManager::GetRun () << "," << fairnessIndex << "," << 0.0 << ","
+            << 0.0 << "," << totalThr << std::endl;
+
+  // Print results to std output
+  std::cout << "agent,dataRate,distance,nWifi,nWifiReal,seed,fairness,latency,plr,throughput"
+            << std::endl
+            << csvOutput.str ();
 
   // Print results to file
-//  std::ofstream outputFile (csvPath);
-//  outputFile << csvOutput.str ();
-//  std::cout << std::endl << "Simulation data saved to: " << csvPath << std::endl << std::endl;
+  std::ofstream outputFile (csvPath);
+  outputFile << csvOutput.str ();
+  std::cout << std::endl << "Simulation data saved to: " << csvPath << std::endl << std::endl;
 
   //Clean-up
   Simulator::Destroy ();
