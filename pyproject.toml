@@ -1,0 +1,34 @@
+[project]
+name = "mldr"
+version = "0.1.0"
+description = ""
+
+readme = "README.md"
+license = {file = "LICENSE"}
+keywords = []
+
+authors = [
+  {name = "Maksymilian Wojnar", email = "maksymilian.wojnar@agh.edu.pl"},
+  {name = "Kamil Szczęch", email = "kamil.szczech@agh.edu.pl"},
+  {name = "Katarzyna Kosek-Szott", email = "katarzyna.kosek-szott@agh.edu.pl"},
+  {name = "Krzysztof Rusek", email = "krzysztof.rusek@agh.edu.pl"},
+  {name = "Szymon Szott", email = "szymon.szott@agh.edu.pl"}
+]
+
+requires-python = ">=3.9"
+dependencies = [
+  "chex~=0.1.86",
+  "jax~=0.4.26",
+  "jaxlib~=0.4.26",
+  "matplotlib~=3.8.4",
+  "optuna~=3.5.0",
+  "reinforced-lib==1.1.1",
+  "tqdm~=4.66.1"
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["mldr"]
