@@ -269,10 +269,12 @@ main (int argc, char *argv[])
 
   double totalThr = jainsIndexN;
   double fairnessIndex = jainsIndexN * jainsIndexN / (nWifiReal * jainsIndexD);
+
   // Print results
   std::cout << std::endl
             << "Network throughput: " << totalThr << " Mb/s" << std::endl
             << "Jain's fairness index: " << fairnessIndex << std::endl
+            << "PLR: " << previousLost / previousTX << std::endl
             << std::endl;
 
   // Gather results in CSV format
@@ -288,17 +290,14 @@ main (int argc, char *argv[])
             << csvOutput.str ();
 
   // Print results to file
-  
   std::ofstream outputFile (csvPath);
   outputFile << csvOutput.str ();
-  std::cout << std::endl << "Simulation data saved to: " << csvPath << std::endl << std::endl;
+  std::cout << std::endl << "Simulation data saved to: " << csvPath;
 
   std::ofstream outputLogFile (csvLogPath);
   outputLogFile << csvLogOutput.str ();
   std::cout << std::endl << "Simulation log saved to: " << csvLogPath << std::endl << std::endl;
 
-  float totalPLR = previousLost/previousTX;
-  std::cout << totalPLR << std::endl;
   //Clean-up
   Simulator::Destroy ();
 
@@ -406,8 +405,6 @@ PopulateARPcache ()
 void
 ExecuteAction (Ptr<FlowMonitor> monitor)
 {
-  std::cout << "TEST TEST " << std::endl;
-  // TODO implement
   double nWifiReal = 0;
   double jainsIndexNTemp = 0.;
   double jainsIndexDTemp = 0.;
@@ -453,7 +450,7 @@ ExecuteAction (Ptr<FlowMonitor> monitor)
 
   auto env = m_env->EnvSetterCond ();
   env->fairness = fairnessIndex;
-  env->latency = currentDelay;
+  env->latency = currentDelay.GetDouble ();
   env->plr = PLR;
   env->throughput = throughput;
   m_env->SetCompleted ();
