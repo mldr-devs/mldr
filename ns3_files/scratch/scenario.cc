@@ -219,9 +219,10 @@ main (int argc, char *argv[])
 
   // Schedule interaction with the agent
   if (agentName != "wifi")
-  {
-    Simulator::Schedule (Seconds (warmupTime + interactionTime), &ExecuteAction, monitor);
-  }
+    {
+      m_env->SetCond (2, 0);
+      Simulator::Schedule (Seconds (warmupTime + interactionTime), &ExecuteAction, monitor);
+    }
 
   // Define simulation stop time
   Simulator::Stop (Seconds (warmupTime + simulationTime));
@@ -300,6 +301,7 @@ main (int argc, char *argv[])
 
   //Clean-up
   Simulator::Destroy ();
+  m_env->SetFinish ();
 
   return 0;
 }
@@ -432,6 +434,7 @@ ExecuteAction (Ptr<FlowMonitor> monitor)
       jainsIndexNTemp += flow;
       jainsIndexDTemp += flow * flow;
     }
+
     Time latency = currentDelay - previousDelay;
     double lostPackets =  currentLost - previousLost;
     double rxPackets =  currentRX - previousRX;
