@@ -416,7 +416,7 @@ ExecuteAction (Ptr<FlowMonitor> monitor)
 
   monitor->CheckForLostPackets ();
   std::map<FlowId, FlowMonitor::FlowStats> stats = monitor->GetFlowStats ();
-  std::cout << "Results: " << std::endl;
+
   for (auto &stat : stats)
     {
       double flow = 8 * ( stat.second.rxBytes - previousStats[stat.first].rxBytes) / (1e6 * interactionTime);
@@ -474,7 +474,7 @@ ExecuteAction (Ptr<FlowMonitor> monitor)
 
   // Enable or disable A-MPDU
   uint64_t ampduSizeLow = 0;
-  uint64_t ampduSizeHigh = 100000000; // Arbitrary large value, 100 MB for now
+  uint64_t ampduSizeHigh = 6500631;
   UintegerValue ampduSize = (ampdu ? UintegerValue (ampduSizeHigh) : UintegerValue (ampduSizeLow));
   Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_MaxAmpduSize", ampduSize);
 
