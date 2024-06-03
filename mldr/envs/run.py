@@ -3,11 +3,14 @@ os.environ['JAX_ENABLE_X64'] = 'True'
 
 from argparse import ArgumentParser
 
+import jax
 import numpy as np
+import tensorflow_probability.substrates.jax as tfp
 from py_interface import *
 from reinforced_lib import RLib
 from reinforced_lib.agents.mab import *
 from reinforced_lib.exts import BasicMab
+from reinforced_lib.logs import *
 
 from mldr.envs.ns3_ai_structures import Env, Act
 
@@ -46,7 +49,7 @@ if __name__ == '__main__':
     args.add_argument('--ns3Path', type=str, default='')
 
     # ns-3 args
-    args.add_argument('--agentName', type=str, required=True)
+    args.add_argument('--agentName', type=str, default='wifi')
     args.add_argument('--channelWidth', type=int, default=20)
     args.add_argument('--csvPath', type=str, default='results.csv')
     args.add_argument('--dataRate', type=int, default=150)
@@ -74,26 +77,32 @@ if __name__ == '__main__':
     if not ns3_path:
         raise ValueError('ns-3 path not found')
 
-    agent = args['agentName']
     seed = args.pop('seed')
-    mempool_key = args.pop('mempoolKey')
-    ns3_args = args
+    key = jax.random.PRNGKey(seed)
+    reward_dist = tfp.distributions.Categorical(probs=(args.pop('massive'), args.pop('throughput'), args.pop('urllc')))
 
-    massive_weight = args.pop('massive')
-    throughput_weight = args.pop('throughput')
-    urllc_weight = args.pop('urllc')
+    agent = args['agentName']
+    mempool_key = args.pop('mempoolKey')
+
+    ns3_args = args
+    ns3_args['RngRun'] = seed
 
     # set up the agent
-    if agent not in AGENT_ARGS:
+    if agent == 'wifi':
+        rlib = None
+    elif agent not in AGENT_ARGS:
         raise ValueError('Invalid agent type')
-
-    rlib = RLib(
-        agent_type=globals()[agent],
-        agent_params=AGENT_ARGS[agent],
-        ext_type=BasicMab,
-        ext_params={'n_arms': N_CW * N_RTS_CTS * N_AMPDU}
-    )
-    rlib.init(seed)
+    else:
+        rlib = RLib(
+            agent_type=globals()[agent],
+            agent_params=AGENT_ARGS[agent],
+            ext_type=BasicMab,
+            ext_params={'n_arms': N_CW * N_RTS_CTS * N_AMPDU},
+            logger_types=CsvLogger,
+            logger_params={'csv_path': f'rlib_{args["csvPath"]}'},
+            logger_sources=('reward', SourceType.METRIC)
+        )
+        rlib.init(seed)
 
     # set up the environment
     exp = Experiment(mempool_key, MEM_SIZE, PNAME, ns3_path, using_waf=False)
@@ -108,13 +117,17 @@ if __name__ == '__main__':
                 if data is None:
                     break
 
-                action = rlib.sample(
-                    massive_weight * data.env.fairness +
-                    throughput_weight * data.env.throughput +
-                    urllc_weight * (data.env.latency + data.env.plr) / 2
-                )
+                key, subkey = jax.random.split(key)
+                reward_id = reward_dist.sample(seed=subkey)
+                rewards = [data.env.fairness, data.env.throughput, (data.env.latency + data.env.plr) / 2]
 
+                action = rlib.sample(rewards[reward_id])
                 cw, rts_cts, ampdu = np.unravel_index(action, (N_CW, N_RTS_CTS, N_AMPDU))
+
+                rlib.log('cw', cw)
+                rlib.log('rts_cts', rts_cts)
+                rlib.log('ampdu', ampdu)
+
                 data.act.cw = cw
                 data.act.rts_cts = rts_cts
                 data.act.ampdu = ampdu
@@ -122,3 +135,4 @@ if __name__ == '__main__':
         ns3_process.wait()
     finally:
         del exp
+        del rlib
