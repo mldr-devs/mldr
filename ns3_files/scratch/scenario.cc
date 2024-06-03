@@ -47,7 +47,7 @@ void GetWarmupFlows (Ptr<FlowMonitor> monitor);
 void InstallTrafficGenerator (Ptr<ns3::Node> fromNode, Ptr<ns3::Node> toNode, uint32_t port,
                               DataRate offeredLoad, uint32_t packetSize);
 void PopulateARPcache ();
-void ExecuteAction ();
+void ExecuteAction (Ptr<FlowMonitor> monitor);
 
 /***** Global variables and constants *****/
 
@@ -58,6 +58,13 @@ double warmupTime = 10.;
 double simulationTime = 50.;
 double interactionTime = 0.5;
 
+double previousRX = 0;
+double previousTX = 0;
+double previousLost = 0;
+Time previousDelay = Seconds(0);
+std::map<FlowId, FlowMonitor::FlowStats> previousStats;
+
+std::ostringstream csvLogOutput;
 /***** Main with scenario definition *****/
 
 int
@@ -68,11 +75,12 @@ main (int argc, char *argv[])
   uint32_t packetSize = 1500;
   uint32_t dataRate = 150;
   uint32_t channelWidth = 20;
-  double distance = 0.;
+  double distance = 10.;
 
   std::string agentName = "wifi";
   std::string pcapName = "";
   std::string csvPath = "results.csv";
+  std::string csvLogPath = "simualationsLogs.csv";
 
   // Parse command line arguments
   CommandLine cmd;
@@ -207,10 +215,12 @@ main (int argc, char *argv[])
       phy.EnablePcap (pcapName, apDevice);
     }
 
+  std::map<FlowId, FlowMonitor::FlowStats> previousStats = monitor->GetFlowStats ();
+
   // Schedule interaction with the agent
   if (agentName != "wifi")
   {
-    Simulator::Schedule (Seconds (warmupTime + interactionTime), &ExecuteAction);
+    Simulator::Schedule (Seconds (warmupTime + interactionTime), &ExecuteAction, monitor);
   }
 
   // Define simulation stop time
@@ -259,7 +269,6 @@ main (int argc, char *argv[])
 
   double totalThr = jainsIndexN;
   double fairnessIndex = jainsIndexN * jainsIndexN / (nWifiReal * jainsIndexD);
-
   // Print results
   std::cout << std::endl
             << "Network throughput: " << totalThr << " Mb/s" << std::endl
@@ -279,10 +288,17 @@ main (int argc, char *argv[])
             << csvOutput.str ();
 
   // Print results to file
+  
   std::ofstream outputFile (csvPath);
   outputFile << csvOutput.str ();
   std::cout << std::endl << "Simulation data saved to: " << csvPath << std::endl << std::endl;
 
+  std::ofstream outputLogFile (csvLogPath);
+  outputLogFile << csvLogOutput.str ();
+  std::cout << std::endl << "Simulation log saved to: " << csvLogPath << std::endl << std::endl;
+
+  float totalPLR = previousLost/previousTX;
+  std::cout << totalPLR << std::endl;
   //Clean-up
   Simulator::Destroy ();
 
@@ -388,14 +404,58 @@ PopulateARPcache ()
 }
 
 void
-ExecuteAction ()
+ExecuteAction (Ptr<FlowMonitor> monitor)
 {
+  std::cout << "TEST TEST " << std::endl;
   // TODO implement
+  double nWifiReal = 0;
+  double jainsIndexNTemp = 0.;
+  double jainsIndexDTemp = 0.;
+
+  double currentRX = 0;
+  double currentTX = 0;
+  double currentLost = 0;
+  Time currentDelay = Seconds(0);
+
+  monitor->CheckForLostPackets ();
+  std::map<FlowId, FlowMonitor::FlowStats> stats = monitor->GetFlowStats ();
+  std::cout << "Results: " << std::endl;
+  for (auto &stat : stats)
+    {
+      double flow = 8 * ( stat.second.rxBytes - previousStats[stat.first].rxBytes) / (1e6 * interactionTime);
+      currentLost += stat.second.lostPackets;
+      currentRX += stat.second.rxPackets;
+      currentTX += stat.second.txPackets;
+      currentDelay += stat.second.delaySum;
+      if (flow > 0)
+        {
+          nWifiReal += 1;
+        }
+
+      jainsIndexNTemp += flow;
+      jainsIndexDTemp += flow * flow;
+    }
+    Time latency = currentDelay - previousDelay;
+    double lostPackets =  currentLost - previousLost;
+    double rxPackets =  currentRX - previousRX;
+    double txPackets =  currentTX - previousTX;
+    double PLR = lostPackets/txPackets;
+    double fairnessIndex = jainsIndexNTemp * jainsIndexNTemp / (nWifiReal * jainsIndexDTemp);
+    double throughput = jainsIndexNTemp;
+
+    csvLogOutput << lostPackets << "," << rxPackets << "," << txPackets << "," << PLR << "," << fairnessIndex << "," << throughput << "," << latency << std::endl;
+
+    previousDelay = currentDelay;
+    previousLost = currentLost;
+    previousRX = currentRX;
+    previousTX = currentTX;
+    previousStats = stats;
+
   auto env = m_env->EnvSetterCond ();
-  env->fairness = 0.;
-  env->latency = 0.;
-  env->plr = 0.;
-  env->throughput = 0.;
+  env->fairness = fairnessIndex;
+  env->latency = currentDelay;
+  env->plr = PLR;
+  env->throughput = throughput;
   m_env->SetCompleted ();
 
   auto act = m_env->ActionGetterCond ();
@@ -421,5 +481,5 @@ ExecuteAction ()
   UintegerValue ampduSize = (ampdu ? UintegerValue (ampduSizeHigh) : UintegerValue (ampduSizeLow));
   Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_MaxAmpduSize", ampduSize);
 
-  Simulator::Schedule (Seconds (interactionTime), &ExecuteAction);
+  Simulator::Schedule (Seconds(interactionTime), &ExecuteAction, monitor);
 }
