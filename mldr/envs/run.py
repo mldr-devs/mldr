@@ -17,7 +17,7 @@ from mldr.envs.ns3_ai_structures import Env, Act
 
 PNAME = 'scenario'
 MEMBLOCK_KEY = 2333
-MEM_SIZE = 64
+MEM_SIZE = 128
 
 N_CW = 7
 N_RTS_CTS = 2
