@@ -414,7 +414,7 @@ ExecuteAction (Ptr<FlowMonitor> monitor)
   double currentRX = 0;
   double currentTX = 0;
   double currentLost = 0;
-  Time currentDelay = Seconds(0);
+  Time currentDelay = Seconds (0);
 
   monitor->CheckForLostPackets ();
   std::map<FlowId, FlowMonitor::FlowStats> stats = monitor->GetFlowStats ();
@@ -435,21 +435,21 @@ ExecuteAction (Ptr<FlowMonitor> monitor)
       jainsIndexDTemp += flow * flow;
     }
 
-    Time latency = currentDelay - previousDelay;
-    double lostPackets =  currentLost - previousLost;
-    double rxPackets =  currentRX - previousRX;
-    double txPackets =  currentTX - previousTX;
-    double PLR = lostPackets/txPackets;
-    double fairnessIndex = jainsIndexNTemp * jainsIndexNTemp / (nWifiReal * jainsIndexDTemp);
-    double throughput = jainsIndexNTemp;
+  Time latency = currentDelay - previousDelay;
+  double lostPackets =  currentLost - previousLost;
+  double rxPackets =  currentRX - previousRX;
+  double txPackets =  currentTX - previousTX;
+  double PLR = lostPackets/txPackets;
+  double fairnessIndex = jainsIndexNTemp * jainsIndexNTemp / (nWifiReal * jainsIndexDTemp);
+  double throughput = jainsIndexNTemp;
 
-    csvLogOutput << lostPackets << "," << rxPackets << "," << txPackets << "," << PLR << "," << fairnessIndex << "," << throughput << "," << latency << std::endl;
+  csvLogOutput << lostPackets << "," << rxPackets << "," << txPackets << "," << PLR << "," << fairnessIndex << "," << throughput << "," << latency << std::endl;
 
-    previousDelay = currentDelay;
-    previousLost = currentLost;
-    previousRX = currentRX;
-    previousTX = currentTX;
-    previousStats = stats;
+  previousDelay = currentDelay;
+  previousLost = currentLost;
+  previousRX = currentRX;
+  previousTX = currentTX;
+  previousStats = stats;
 
   auto env = m_env->EnvSetterCond ();
   env->fairness = fairnessIndex;
@@ -470,10 +470,10 @@ ExecuteAction (Ptr<FlowMonitor> monitor)
   Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_Txop/MaxCw", UintegerValue (CW));
 
   // Enable or disable CTS/RTS
-  uint64_t ctsThrLow = 100;
-  uint64_t ctsThrHigh = 100000000; // Arbitrary large value, 100 MB for now
+  uint64_t ctsThrLow = 0;
+  uint64_t ctsThrHigh = 100 * 1024 * 1024;
   UintegerValue ctsThr = (rts_cts ? UintegerValue (ctsThrLow) : UintegerValue (ctsThrHigh));
-  Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", ctsThr);
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/RtsCtsThreshold", ctsThr);
 
   // Enable or disable A-MPDU
   uint64_t ampduSizeLow = 0;
