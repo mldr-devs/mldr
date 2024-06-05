@@ -65,6 +65,7 @@ Time previousDelay = Seconds(0);
 std::map<FlowId, FlowMonitor::FlowStats> previousStats;
 
 std::ostringstream csvLogOutput;
+
 /***** Main with scenario definition *****/
 
 int
@@ -194,7 +195,7 @@ main (int argc, char *argv[])
   PopulateARPcache ();
 
   // Configure applications
-  DataRate applicationDataRate = DataRate (dataRate * 1e6 / nWifi);
+  DataRate applicationDataRate = DataRate (dataRate * 1e6);
   uint32_t portNumber = 9;
 
   for (uint32_t j = 0; j < wifiStaNodes.GetN (); ++j)
@@ -214,8 +215,6 @@ main (int argc, char *argv[])
       phy.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11_RADIO);
       phy.EnablePcap (pcapName, apDevice);
     }
-
-  std::map<FlowId, FlowMonitor::FlowStats> previousStats = monitor->GetFlowStats ();
 
   // Schedule interaction with the agent
   if (agentName != "wifi")
@@ -271,7 +270,7 @@ main (int argc, char *argv[])
   double totalThr = jainsIndexN;
   double fairnessIndex = jainsIndexN * jainsIndexN / (nWifiReal * jainsIndexD);
   double totalPLR = previousLost / previousTX;
-  double totalLatency = previousDelay.GetDouble ();
+  double totalLatency = previousDelay.GetSeconds ();
 
   // Print results
   std::cout << std::endl
@@ -282,7 +281,6 @@ main (int argc, char *argv[])
             << std::endl;
 
   // Gather results in CSV format
-  // TODO implement latency and PLR
   std::ostringstream csvOutput;
   csvOutput << agentName << "," << dataRate << "," << distance << "," << nWifi << "," << nWifiReal << ","
             << RngSeedManager::GetRun () << "," << fairnessIndex << "," << totalLatency << ","
@@ -461,7 +459,7 @@ ExecuteAction (Ptr<FlowMonitor> monitor)
 
   auto env = m_env->EnvSetterCond ();
   env->fairness = fairnessIndex;
-  env->latency = currentDelay.GetDouble ();
+  env->latency = currentDelay.GetSeconds ();
   env->plr = PLR;
   env->throughput = throughput;
   m_env->SetCompleted ();
