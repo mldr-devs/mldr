@@ -459,35 +459,35 @@ ExecuteAction (Ptr<FlowMonitor> monitor)
   previousTX = currentTX;
   previousStats = stats;
 
-  // auto env = m_env->EnvSetterCond ();
-  // env->fairness = fairnessIndex;
-  // env->latency = currentDelay.GetDouble ();
-  // env->plr = PLR;
-  // env->throughput = throughput;
-  // m_env->SetCompleted ();
+  auto env = m_env->EnvSetterCond ();
+  env->fairness = fairnessIndex;
+  env->latency = currentDelay.GetDouble ();
+  env->plr = PLR;
+  env->throughput = throughput;
+  m_env->SetCompleted ();
 
-  // auto act = m_env->ActionGetterCond ();
-  // uint8_t cw = act->cw;
-  // bool rts_cts = act->rts_cts;
-  // bool ampdu = act->ampdu;
-  // m_env->GetCompleted ();
+  auto act = m_env->ActionGetterCond ();
+  uint8_t cw = act->cw;
+  bool rts_cts = act->rts_cts;
+  bool ampdu = act->ampdu;
+  m_env->GetCompleted ();
 
-  // // Set CW
-  // uint32_t CW = pow(2, 4 + cw);
-  // Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_Txop/MinCw", UintegerValue (CW));
-  // Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_Txop/MaxCw", UintegerValue (CW));
+  // Set CW
+  uint32_t CW = pow(2, 4 + cw);
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_Txop/MinCw", UintegerValue (CW));
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_Txop/MaxCw", UintegerValue (CW));
 
-  // // Enable or disable CTS/RTS
-  // uint64_t ctsThrLow = 0;
-  // uint64_t ctsThrHigh = 100 * 1024 * 1024;
-  // UintegerValue ctsThr = (rts_cts ? UintegerValue (ctsThrLow) : UintegerValue (ctsThrHigh));
-  // Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/RtsCtsThreshold", ctsThr);
+  // Enable or disable CTS/RTS
+  uint64_t ctsThrLow = 0;
+  uint64_t ctsThrHigh = 100 * 1024 * 1024;
+  UintegerValue ctsThr = (rts_cts ? UintegerValue (ctsThrLow) : UintegerValue (ctsThrHigh));
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/RtsCtsThreshold", ctsThr);
 
-  // // Enable or disable A-MPDU
-  // uint64_t ampduSizeLow = 0;
-  // uint64_t ampduSizeHigh = 6500631;
-  // UintegerValue ampduSize = (ampdu ? UintegerValue (ampduSizeHigh) : UintegerValue (ampduSizeLow));
-  // Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_MaxAmpduSize", ampduSize);
+  // Enable or disable A-MPDU
+  uint64_t ampduSizeLow = 0;
+  uint64_t ampduSizeHigh = 6500631;
+  UintegerValue ampduSize = (ampdu ? UintegerValue (ampduSizeHigh) : UintegerValue (ampduSizeLow));
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_MaxAmpduSize", ampduSize);
 
   Simulator::Schedule (Seconds(interactionTime), &ExecuteAction, monitor);
 }
