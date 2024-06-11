@@ -74,7 +74,7 @@ main (int argc, char *argv[])
   // Initialize default simulation parameters
   uint32_t nWifi = 1;
   uint32_t packetSize = 1500;
-  uint32_t dataRate = 130;
+  uint32_t dataRate = 110;
   uint32_t channelWidth = 20;
   double distance = 10.;
 
@@ -346,7 +346,6 @@ InstallTrafficGenerator (Ptr<ns3::Node> fromNode, Ptr<ns3::Node> toNode, uint32_
   // Configure source and sink
   InetSocketAddress sinkSocket (addr, port);
   PacketSinkHelper packetSinkHelper ("ns3::UdpSocketFactory", sinkSocket);
-  
 
   OnOffHelper onOffHelper ("ns3::UdpSocketFactory", sinkSocket);
   onOffHelper.SetConstantRate (offeredLoad, packetSize);

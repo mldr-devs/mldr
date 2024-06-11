@@ -54,7 +54,7 @@ if __name__ == '__main__':
     args.add_argument('--agentName', type=str, default='wifi')
     args.add_argument('--channelWidth', type=int, default=20)
     args.add_argument('--csvPath', type=str, default='results.csv')
-    args.add_argument('--dataRate', type=int, default=130)
+    args.add_argument('--dataRate', type=int, default=110)
     args.add_argument('--distance', type=float, default=10.0)
     args.add_argument('--fuzzTime', type=float, default=5.0)
     args.add_argument('--interactionTime', type=float, default=0.5)
