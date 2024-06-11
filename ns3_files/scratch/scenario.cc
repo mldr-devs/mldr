@@ -271,6 +271,7 @@ main (int argc, char *argv[])
   double fairnessIndex = jainsIndexN * jainsIndexN / (nWifiReal * jainsIndexD);
   double totalPLR = previousLost / previousTX;
   double totalLatency = previousDelay.GetSeconds ();
+  double latencyPerPacketTotal = previousDelay.GetSeconds () / previousRX;
 
   // Print results
   std::cout << std::endl
@@ -278,12 +279,13 @@ main (int argc, char *argv[])
             << "Jain's fairness index: " << fairnessIndex << std::endl
             << "PLR: " << totalPLR << std::endl
             << "Total Latency: " << totalLatency << std::endl
+            << "Latency per packet: " << latencyPerPacketTotal << std::endl
             << std::endl;
 
   // Gather results in CSV format
   std::ostringstream csvOutput;
   csvOutput << agentName << "," << dataRate << "," << distance << "," << nWifi << "," << nWifiReal << ","
-            << RngSeedManager::GetRun () << "," << fairnessIndex << "," << totalLatency << ","
+            << RngSeedManager::GetRun () << "," << fairnessIndex << "," << latencyPerPacketTotal << ","
             << totalPLR << "," << totalThr << std::endl;
 
   // Print results to std output
@@ -343,11 +345,12 @@ InstallTrafficGenerator (Ptr<ns3::Node> fromNode, Ptr<ns3::Node> toNode, uint32_
 
   // Configure source and sink
   InetSocketAddress sinkSocket (addr, port);
-  sinkSocket.SetTos (tosValue);
   PacketSinkHelper packetSinkHelper ("ns3::UdpSocketFactory", sinkSocket);
+  
 
   OnOffHelper onOffHelper ("ns3::UdpSocketFactory", sinkSocket);
   onOffHelper.SetConstantRate (offeredLoad, packetSize);
+  onOffHelper.SetAttribute("Tos", UintegerValue(tosValue));
 
   // Configure applications
   ApplicationContainer sinkApplications (packetSinkHelper.Install (toNode));
@@ -445,11 +448,12 @@ ExecuteAction (Ptr<FlowMonitor> monitor)
   double lostPackets =  currentLost - previousLost;
   double rxPackets =  currentRX - previousRX;
   double txPackets =  currentTX - previousTX;
+  double latencyPerPacket = latency.GetSeconds() / rxPackets;
   double PLR = lostPackets/txPackets;
   double fairnessIndex = jainsIndexNTemp * jainsIndexNTemp / (nWifiReal * jainsIndexDTemp);
   double throughput = jainsIndexNTemp;
 
-  csvLogOutput << lostPackets << "," << rxPackets << "," << txPackets << "," << PLR << "," << fairnessIndex << "," << throughput << "," << latency << std::endl;
+  csvLogOutput << lostPackets << "," << rxPackets << "," << txPackets << "," << PLR << "," << fairnessIndex << "," << throughput << "," << latencyPerPacket << std::endl;
 
   previousDelay = currentDelay;
   previousLost = currentLost;
@@ -459,7 +463,7 @@ ExecuteAction (Ptr<FlowMonitor> monitor)
 
   auto env = m_env->EnvSetterCond ();
   env->fairness = fairnessIndex;
-  env->latency = currentDelay.GetSeconds ();
+  env->latency = latencyPerPacket;
   env->plr = PLR;
   env->throughput = throughput;
   m_env->SetCompleted ();
