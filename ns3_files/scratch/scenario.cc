@@ -74,7 +74,7 @@ main (int argc, char *argv[])
   // Initialize default simulation parameters
   uint32_t nWifi = 1;
   uint32_t packetSize = 1500;
-  uint32_t dataRate = 150;
+  uint32_t dataRate = 130;
   uint32_t channelWidth = 20;
   double distance = 10.;
 

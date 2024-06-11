@@ -23,18 +23,20 @@ N_CW = 7
 N_RTS_CTS = 2
 N_AMPDU = 2
 
+LATENCY_THRESHOLD = 0.1
+
 AGENT_ARGS = {
     'EGreedy': {
         'e': 0.05,
-        'optimistic_start': 100.0
+        'optimistic_start': 1.0
     },
     'UCB': {
-        'c': 1.0
+        'c': 0.01
     },
     'NormalThompsonSampling': {
         'alpha': 1.0,
         'beta': 1.0,
-        'mu': 100.0,
+        'mu': 1.0,
         'lam': 0.0,
     }
 }
@@ -52,7 +54,7 @@ if __name__ == '__main__':
     args.add_argument('--agentName', type=str, default='wifi')
     args.add_argument('--channelWidth', type=int, default=20)
     args.add_argument('--csvPath', type=str, default='results.csv')
-    args.add_argument('--dataRate', type=int, default=150)
+    args.add_argument('--dataRate', type=int, default=130)
     args.add_argument('--distance', type=float, default=10.0)
     args.add_argument('--fuzzTime', type=float, default=5.0)
     args.add_argument('--interactionTime', type=float, default=0.5)
@@ -77,9 +79,21 @@ if __name__ == '__main__':
     if not ns3_path:
         raise ValueError('ns-3 path not found')
 
+    reward_probs = [args.pop('massive'), args.pop('throughput')] + [args.pop('urllc')] * 2
+    reward_dist = tfp.distributions.Categorical(probs=reward_probs)
+
+    def normalize_rewards(env):
+        fairness, throughput, latency, plr = env.fairness, env.throughput, env.latency, env.plr
+
+        fairness = None
+        throughput = throughput / args['dataRate']
+        latency = float(latency < LATENCY_THRESHOLD)
+        plr = 1 - plr
+
+        return fairness, throughput, latency, plr
+
     seed = args.pop('seed')
     key = jax.random.PRNGKey(seed)
-    reward_dist = tfp.distributions.Categorical(probs=(args.pop('massive'), args.pop('throughput'), args.pop('urllc')))
 
     agent = args['agentName']
     mempool_key = args.pop('mempoolKey')
@@ -119,7 +133,7 @@ if __name__ == '__main__':
 
                 key, subkey = jax.random.split(key)
                 reward_id = reward_dist.sample(seed=subkey)
-                rewards = [data.env.fairness, data.env.throughput, (data.env.latency + data.env.plr) / 2]
+                rewards = normalize_rewards(data.env)
 
                 action = rlib.sample(rewards[reward_id])
                 cw, rts_cts, ampdu = np.unravel_index(action, (N_CW, N_RTS_CTS, N_AMPDU))
