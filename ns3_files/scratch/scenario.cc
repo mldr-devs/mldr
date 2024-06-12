@@ -468,21 +468,21 @@ ExecuteAction (Ptr<FlowMonitor> monitor)
   m_env->SetCompleted ();
 
   auto act = m_env->ActionGetterCond ();
-  uint8_t cw = act->cw;
+  uint8_t cw_idx = act->cw;
   bool rts_cts = act->rts_cts;
   bool ampdu = act->ampdu;
   m_env->GetCompleted ();
 
   // Set CW
-  uint32_t CW = pow(2, 4 + cw);
-  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_Txop/MinCw", UintegerValue (CW));
-  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_Txop/MaxCw", UintegerValue (CW));
+  AttributeContainerValue<UintegerValue> cwValue (std::vector {UintegerValue (pow (2, 4 + cw_idx))});
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_Txop/MinCws", cwValue);
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_Txop/MaxCws", cwValue);
 
-  // Enable or disable CTS/RTS
+  // Enable or disable RTS/CTS
   uint64_t ctsThrLow = 0;
-  uint64_t ctsThrHigh = 100 * 1024 * 1024;
+  uint64_t ctsThrHigh = 4692480;
   UintegerValue ctsThr = (rts_cts ? UintegerValue (ctsThrLow) : UintegerValue (ctsThrHigh));
-  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/RtsCtsThreshold", ctsThr);
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$ns3::IdealWifiManager/RtsCtsThreshold", ctsThr);
 
   // Enable or disable A-MPDU
   uint64_t ampduSizeLow = 0;
