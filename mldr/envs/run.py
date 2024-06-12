@@ -79,7 +79,7 @@ if __name__ == '__main__':
     if not ns3_path:
         raise ValueError('ns-3 path not found')
 
-    reward_probs = [args.pop('massive'), args.pop('throughput')] + [args.pop('urllc')] * 2
+    reward_probs = [args.pop('massive'), args.pop('throughput')] + [args.pop('urllc') / 2] * 2
     reward_dist = tfp.distributions.Categorical(probs=reward_probs)
 
     def normalize_rewards(env):
