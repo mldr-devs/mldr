@@ -8,7 +8,8 @@ class Env(Structure):
         ('fairness', c_double),
         ('latency', c_double),
         ('plr', c_double),
-        ('throughput', c_double)
+        ('throughput', c_double),
+        ('time', c_double)
     ]
 
 
@@ -19,4 +20,5 @@ class Act(Structure):
         ('cw', c_uint8),
         ('rts_cts', c_bool),
         ('ampdu', c_bool),
+        ('end_warmup', c_bool)
     ]

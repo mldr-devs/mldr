@@ -30,6 +30,7 @@ struct sEnv
   double latency;
   double plr;
   double throughput;
+  double time;
 } Packed;
 
 struct sAct
@@ -37,31 +38,40 @@ struct sAct
   uint8_t cw;
   bool rts_cts;
   bool ampdu;
+  bool end_warmup;
 } Packed;
 
 Ns3AIRL<sEnv, sAct> * m_env = new Ns3AIRL<sEnv, sAct> (DEFAULT_MEMBLOCK_KEY);
 
 /***** Functions declarations *****/
 
-void GetWarmupFlows (Ptr<FlowMonitor> monitor);
+void GetFuzzFlows ();
+void GetWarmupFlows ();
 void InstallTrafficGenerator (Ptr<ns3::Node> fromNode, Ptr<ns3::Node> toNode, uint32_t port,
                               DataRate offeredLoad, uint32_t packetSize);
 void PopulateARPcache ();
-void ExecuteAction (Ptr<FlowMonitor> monitor);
+void ExecuteAction ();
 
 /***** Global variables and constants *****/
 
 std::map<uint32_t, uint64_t> warmupFlows;
 
 double fuzzTime = 5.;
-double warmupTime = 10.;
 double simulationTime = 50.;
 double interactionTime = 0.5;
+bool simulationPhase = false;
 
 double previousRX = 0;
 double previousTX = 0;
 double previousLost = 0;
 Time previousDelay = Seconds(0);
+
+double warmupRX = 0;
+double warmupTX = 0;
+double warmupLost = 0;
+Time warmupDelay = Seconds(0);
+
+Ptr<FlowMonitor> monitor;
 std::map<FlowId, FlowMonitor::FlowStats> previousStats;
 
 std::ostringstream csvLogOutput;
@@ -96,7 +106,6 @@ main (int argc, char *argv[])
   cmd.AddValue ("packetSize", "Packets size (B)", packetSize);
   cmd.AddValue ("pcapName", "Name of a PCAP file generated from the AP", pcapName);
   cmd.AddValue ("simulationTime", "Duration of simulation (s)", simulationTime);
-  cmd.AddValue ("warmupTime", "Duration of warmup stage (s)", warmupTime);
   cmd.Parse (argc, argv);
 
   // Print simulation settings to screen
@@ -109,7 +118,6 @@ main (int argc, char *argv[])
             << "- number of stations: " << nWifi << std::endl
             << "- max distance between AP and STAs: " << distance << " m" << std::endl
             << "- simulation time: " << simulationTime << " s" << std::endl
-            << "- warmup time: " << warmupTime << " s" << std::endl
             << "- max fuzz time: " << fuzzTime << " s" << std::endl
             << "- interaction time: " << interactionTime << " s" << std::endl << std::endl;
 
@@ -206,8 +214,7 @@ main (int argc, char *argv[])
 
   // Install FlowMonitor
   FlowMonitorHelper flowmon;
-  Ptr<FlowMonitor> monitor = flowmon.InstallAll ();
-  Simulator::Schedule (Seconds (warmupTime), &GetWarmupFlows, monitor);
+  monitor = flowmon.InstallAll ();
 
   // Generate PCAP at AP
   if (!pcapName.empty ())
@@ -220,11 +227,14 @@ main (int argc, char *argv[])
   if (agentName != "wifi")
     {
       m_env->SetCond (2, 0);
-      Simulator::Schedule (Seconds (warmupTime + interactionTime), &ExecuteAction, monitor);
+      Simulator::Schedule (Seconds (fuzzTime + 1.0), &GetFuzzFlows);
+      Simulator::Schedule (Seconds (fuzzTime + 1.0 + interactionTime), &ExecuteAction);
     }
-
-  // Define simulation stop time
-  Simulator::Stop (Seconds (warmupTime + simulationTime));
+  else
+    {
+      Simulator::Schedule (Seconds (fuzzTime + 1.0), &GetWarmupFlows);
+      Simulator::Stop (Seconds (fuzzTime + 1.0 + simulationTime));
+    }
 
   // Record start time
   std::cout << "Starting simulation..." << std::endl;
@@ -269,9 +279,9 @@ main (int argc, char *argv[])
 
   double totalThr = jainsIndexN;
   double fairnessIndex = jainsIndexN * jainsIndexN / (nWifiReal * jainsIndexD);
-  double totalPLR = previousLost / previousTX;
-  double totalLatency = previousDelay.GetSeconds ();
-  double latencyPerPacketTotal = previousDelay.GetSeconds () / previousRX;
+  double totalPLR = warmupLost / warmupTX;
+  double totalLatency = warmupDelay.GetSeconds ();
+  double latencyPerPacketTotal = warmupDelay.GetSeconds () / warmupTX;
 
   // Print results
   std::cout << std::endl
@@ -312,12 +322,26 @@ main (int argc, char *argv[])
 /***** Function definitions *****/
 
 void
-GetWarmupFlows (Ptr<FlowMonitor> monitor)
+GetWarmupFlows ()
 {
   previousStats = monitor->GetFlowStats ();
   for (auto &stat : monitor->GetFlowStats ())
     {
       warmupFlows.insert (std::pair<uint32_t, double> (stat.first, 8 * stat.second.rxBytes));
+      warmupLost += stat.second.lostPackets;
+      warmupRX += stat.second.rxPackets;
+      warmupTX += stat.second.txPackets;
+      warmupDelay += stat.second.delaySum;
+    }
+}
+
+void
+GetFuzzFlows ()
+{
+  previousStats = monitor->GetFlowStats ();
+
+  for (auto &stat : monitor->GetFlowStats ())
+    {
       previousLost += stat.second.lostPackets;
       previousRX += stat.second.rxPackets;
       previousTX += stat.second.txPackets;
@@ -356,9 +380,7 @@ InstallTrafficGenerator (Ptr<ns3::Node> fromNode, Ptr<ns3::Node> toNode, uint32_
   ApplicationContainer sourceApplications (onOffHelper.Install (fromNode));
 
   sinkApplications.Start (Seconds (applicationsStart));
-  sinkApplications.Stop (Seconds (warmupTime + simulationTime));
   sourceApplications.Start (Seconds (applicationsStart));
-  sourceApplications.Stop (Seconds (warmupTime + simulationTime));
 }
 
 void
@@ -413,7 +435,7 @@ PopulateARPcache ()
 }
 
 void
-ExecuteAction (Ptr<FlowMonitor> monitor)
+ExecuteAction ()
 {
   double nWifiReal = 0;
   double jainsIndexNTemp = 0.;
@@ -465,13 +487,23 @@ ExecuteAction (Ptr<FlowMonitor> monitor)
   env->latency = latencyPerPacket;
   env->plr = PLR;
   env->throughput = throughput;
+  env->time = Simulator::Now ().GetSeconds () - (fuzzTime + 1.0);
   m_env->SetCompleted ();
 
   auto act = m_env->ActionGetterCond ();
   uint8_t cw_idx = act->cw;
   bool rts_cts = act->rts_cts;
   bool ampdu = act->ampdu;
+  bool end_warmup = act->end_warmup;
   m_env->GetCompleted ();
+
+  // End warmup period, define simulation stop time, and reset stats
+  if (end_warmup && !simulationPhase)
+    {
+      Simulator::Stop (Seconds (simulationTime));
+      Simulator::ScheduleNow (&GetWarmupFlows);
+      simulationPhase = true;
+    }
 
   // Set CW
   AttributeContainerValue<UintegerValue> cwValue (std::vector {UintegerValue (pow (2, 4 + cw_idx))});
@@ -490,5 +522,5 @@ ExecuteAction (Ptr<FlowMonitor> monitor)
   UintegerValue ampduSize = (ampdu ? UintegerValue (ampduSizeHigh) : UintegerValue (ampduSizeLow));
   Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_MaxAmpduSize", ampduSize);
 
-  Simulator::Schedule (Seconds(interactionTime), &ExecuteAction, monitor);
+  Simulator::Schedule (Seconds(interactionTime), &ExecuteAction);
 }
