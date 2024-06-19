@@ -448,9 +448,6 @@ PopulateARPcache ()
 void
 ExecuteAction ()
 {
-
-  std::cout << std::endl
-            << "Network throughput3213: " << counter << std::endl;
   double nWifiReal = 0;
   double jainsIndexNTemp = 0.;
   double jainsIndexDTemp = 0.;
@@ -496,8 +493,6 @@ ExecuteAction ()
   previousTX = currentTX;
   previousStats = stats;
 
-  std::cout << std::endl
-            << "Network srodek1: " << counter << std::endl;
 
   auto env = m_env->EnvSetterCond ();
   env->fairness = fairnessIndex;
@@ -513,8 +508,6 @@ ExecuteAction ()
   bool ampdu = act->ampdu;
   bool end_warmup = act->end_warmup;
   m_env->GetCompleted ();
-  std::cout << std::endl
-            << "Network przed warunkiem: " << counter << std::endl;
   // End warmup period, define simulation stop time, and reset stats
   if (end_warmup && !simulationPhase)
     {
@@ -541,7 +534,5 @@ ExecuteAction ()
   Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_MaxAmpduSize", ampduSize);
 
   Simulator::Schedule (Seconds(interactionTime), &ExecuteAction);
-  std::cout << std::endl
-            << "Network throughput123: " << counter << std::endl;
   counter++;
 }
