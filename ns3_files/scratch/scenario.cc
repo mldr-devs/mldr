@@ -15,6 +15,7 @@
 #include "ns3/wifi-net-device.h"
 #include "ns3/yans-wifi-helper.h"
 #include "ns3/ns3-ai-module.h"
+#include "ns3/traffic-control-helper.h"
 
 using namespace ns3;
 
@@ -70,6 +71,7 @@ double warmupRX = 0;
 double warmupTX = 0;
 double warmupLost = 0;
 Time warmupDelay = Seconds(0);
+double counter = 0;
 
 Ptr<FlowMonitor> monitor;
 std::map<FlowId, FlowMonitor::FlowStats> previousStats;
@@ -82,7 +84,9 @@ int
 main (int argc, char *argv[])
 {
   // Initialize default simulation parameters
-  uint32_t nWifi = 1;
+
+  uint32_t nWifi = 10;
+  uint32_t maxQueueSize = 100;
   uint32_t packetSize = 1500;
   uint32_t dataRate = 110;
   uint32_t channelWidth = 20;
@@ -106,6 +110,7 @@ main (int argc, char *argv[])
   cmd.AddValue ("packetSize", "Packets size (B)", packetSize);
   cmd.AddValue ("pcapName", "Name of a PCAP file generated from the AP", pcapName);
   cmd.AddValue ("simulationTime", "Duration of simulation (s)", simulationTime);
+  cmd.AddValue ("maxQueueSize", "Max queue size (packets)", maxQueueSize);
   cmd.Parse (argc, argv);
 
   // Print simulation settings to screen
@@ -119,7 +124,8 @@ main (int argc, char *argv[])
             << "- max distance between AP and STAs: " << distance << " m" << std::endl
             << "- simulation time: " << simulationTime << " s" << std::endl
             << "- max fuzz time: " << fuzzTime << " s" << std::endl
-            << "- interaction time: " << interactionTime << " s" << std::endl << std::endl;
+            << "- interaction time: " << interactionTime << " s" << std::endl << std::endl
+            << "- max queue size: " << maxQueueSize << " packets" << std::endl << std::endl;
 
   // Create AP and stations
   NodeContainer wifiApNode (1);
@@ -193,6 +199,11 @@ main (int argc, char *argv[])
   InternetStackHelper stack;
   stack.Install (wifiApNode);
   stack.Install (wifiStaNodes);
+
+  TrafficControlHelper tch;
+  tch.SetRootQueueDisc("ns3::FifoQueueDisc", "MaxSize",  StringValue(std::to_string(maxQueueSize)+"p"));
+  tch.Install(staDevice);
+  tch.Install(apDevice);
 
   // Configure IP addressing
   Ipv4AddressHelper address ("192.168.1.0", "255.255.255.0");
@@ -437,6 +448,9 @@ PopulateARPcache ()
 void
 ExecuteAction ()
 {
+
+  std::cout << std::endl
+            << "Network throughput3213: " << counter << std::endl;
   double nWifiReal = 0;
   double jainsIndexNTemp = 0.;
   double jainsIndexDTemp = 0.;
@@ -482,6 +496,9 @@ ExecuteAction ()
   previousTX = currentTX;
   previousStats = stats;
 
+  std::cout << std::endl
+            << "Network srodek1: " << counter << std::endl;
+
   auto env = m_env->EnvSetterCond ();
   env->fairness = fairnessIndex;
   env->latency = latencyPerPacket;
@@ -496,7 +513,8 @@ ExecuteAction ()
   bool ampdu = act->ampdu;
   bool end_warmup = act->end_warmup;
   m_env->GetCompleted ();
-
+  std::cout << std::endl
+            << "Network przed warunkiem: " << counter << std::endl;
   // End warmup period, define simulation stop time, and reset stats
   if (end_warmup && !simulationPhase)
     {
@@ -523,4 +541,7 @@ ExecuteAction ()
   Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_MaxAmpduSize", ampduSize);
 
   Simulator::Schedule (Seconds(interactionTime), &ExecuteAction);
+  std::cout << std::endl
+            << "Network throughput123: " << counter << std::endl;
+  counter++;
 }

@@ -61,9 +61,10 @@ if __name__ == '__main__':
     args.add_argument('--distance', type=float, default=10.0)
     args.add_argument('--fuzzTime', type=float, default=5.0)
     args.add_argument('--interactionTime', type=float, default=0.5)
-    args.add_argument('--nWifi', type=int, default=1)
+    args.add_argument('--nWifi', type=int, default=10)
     args.add_argument('--packetSize', type=int, default=1500)
     args.add_argument('--simulationTime', type=float, default=50.0)
+    args.add_argument('--maxQueueSize', type=int, default=1)
 
     # reward weights
     args.add_argument('--massive', type=float, default=0.0)
