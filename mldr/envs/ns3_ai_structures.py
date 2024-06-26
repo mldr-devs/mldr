@@ -17,7 +17,7 @@ class Env(Structure):
 class Act(Structure):
     _pack_ = 1
     _fields_ = [
-        ('cw', c_uint8),
+        ('cw', c_int),
         ('rts_cts', c_bool),
         ('ampdu', c_bool),
         ('end_warmup', c_bool)

@@ -1,7 +1,7 @@
 import os
 os.environ['JAX_ENABLE_X64'] = 'True'
 
-from argparse import ArgumentParser
+import argparse
 from collections import deque
 
 import jax
@@ -46,7 +46,7 @@ AGENT_ARGS = {
 
 
 if __name__ == '__main__':
-    args = ArgumentParser()
+    args = argparse.ArgumentParser()
 
     # global settings
     args.add_argument('--seed', type=int, default=100)
@@ -55,16 +55,20 @@ if __name__ == '__main__':
 
     # ns-3 args
     args.add_argument('--agentName', type=str, default='UCB')
+    args.add_argument('--ampdu', action=argparse.BooleanOptionalAction, default=True)
     args.add_argument('--channelWidth', type=int, default=20)
+    args.add_argument('--csvLogPath', type=str, default='logs.csv')
     args.add_argument('--csvPath', type=str, default='results.csv')
+    args.add_argument('--cw', type=int, default=-1)
     args.add_argument('--dataRate', type=int, default=110)
     args.add_argument('--distance', type=float, default=10.0)
     args.add_argument('--fuzzTime', type=float, default=5.0)
     args.add_argument('--interactionTime', type=float, default=0.5)
+    args.add_argument('--maxQueueSize', type=int, default=100)
     args.add_argument('--nWifi', type=int, default=10)
     args.add_argument('--packetSize', type=int, default=1500)
+    args.add_argument('--rtsCts', action=argparse.BooleanOptionalAction, default=False)
     args.add_argument('--simulationTime', type=float, default=50.0)
-    args.add_argument('--maxQueueSize', type=int, default=1)
 
     # reward weights
     args.add_argument('--massive', type=float, default=0.0)
@@ -73,7 +77,7 @@ if __name__ == '__main__':
 
     # agent settings
     args.add_argument('--maxWarmup', type=int, default=50.0)
-    args.add_argument('--useWarmup', default=False, action='store_true')
+    args.add_argument('--useWarmup', action=argparse.BooleanOptionalAction, default=False)
 
     args = args.parse_args()
     args = vars(args)
