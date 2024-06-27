@@ -285,6 +285,10 @@ main (int argc, char *argv[])
   double jainsIndexN = 0.;
   double jainsIndexD = 0.;
 
+  Time latencySum = Seconds(0);
+  double lostSum = 0.;
+  double txSum = 0.;
+
   Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
   std::map<FlowId, FlowMonitor::FlowStats> stats = monitor->GetFlowStats ();
   std::cout << "Results: " << std::endl;
@@ -301,6 +305,10 @@ main (int argc, char *argv[])
       jainsIndexN += flow;
       jainsIndexD += flow * flow;
 
+      latencySum += stat.second.delaySum;
+      lostSum += stat.second.lostPackets;
+      txSum += stat.second.txPackets;
+
       Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (stat.first);
       std::cout << "Flow " << stat.first << " (" << t.sourceAddress << " -> "
                 << t.destinationAddress << ")\tThroughput: " << flow << " Mb/s" << std::endl;
@@ -308,9 +316,9 @@ main (int argc, char *argv[])
 
   double totalThr = jainsIndexN;
   double fairnessIndex = jainsIndexN * jainsIndexN / (nWifiReal * jainsIndexD);
-  double totalPLR = warmupLost / warmupTX;
-  double totalLatency = warmupDelay.GetSeconds ();
-  double latencyPerPacketTotal = warmupDelay.GetSeconds () / warmupTX;
+  double totalPLR = (lostSum - warmupLost) / (txSum - warmupTX);
+  double totalLatency = latencySum.GetSeconds() - warmupDelay.GetSeconds ();
+  double latencyPerPacketTotal = totalLatency / (txSum - warmupTX);
 
   // Print results
   std::cout << std::endl

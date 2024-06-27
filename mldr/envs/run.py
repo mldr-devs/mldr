@@ -26,7 +26,7 @@ N_AMPDU = 2
 
 ACTION_HISTORY_LEN = 20
 ACTION_PROB_THRESHOLD = 0.9
-LATENCY_THRESHOLD = 0.1
+LATENCY_THRESHOLD = 0.01
 
 AGENT_ARGS = {
     'EGreedy': {
@@ -108,7 +108,7 @@ if __name__ == '__main__':
 
         fairness = None
         throughput = throughput / args['dataRate']
-        latency = max(0, 1 - latency / LATENCY_THRESHOLD)
+        latency = 1 - latency / LATENCY_THRESHOLD
 
         return fairness, throughput, latency
 
