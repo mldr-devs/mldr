@@ -44,7 +44,7 @@ struct sEnv
 
 struct sAct
 {
-  uint8_t cw;
+  int cw;
   bool rts_cts;
   bool ampdu;
   bool end_warmup;
