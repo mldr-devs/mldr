@@ -141,8 +141,8 @@ main(int argc, char* argv[])
 
   // Fix non-unicast data rate to be the same as that of unicast
 
-  NodeContainer c;
-  c.Create(nWifi);
+  NodeContainer wifiNodes;
+  wifiNodes.Create(nWifi);
 
   // The below set of helpers will help us to put together the wifi NICs we want
   WifiHelper wifi;
@@ -169,22 +169,22 @@ main(int argc, char* argv[])
   Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/ChannelSettings",
                StringValue ("{0, " + std::to_string (channelWidth) + ", BAND_2_4GHZ, 0}"));
 
-  NetDeviceContainer devices = wifi.Install(wifiPhy, wifiMac, c);
+  NetDeviceContainer devices = wifi.Install(wifiPhy, wifiMac, wifiNodes);
 
   MobilityHelper mobility;
   mobility.SetPositionAllocator ("ns3::RandomRectanglePositionAllocator",
                                   "X", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=" + std::to_string (distance) + "]"),
                                   "Y", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=" + std::to_string (distance) + "]"));
   mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
-  mobility.Install(c);
+  mobility.Install(wifiNodes);
 
-  Ptr<MobilityModel> sinkMobility = c.Get (0)->GetObject<MobilityModel> ();
+  Ptr<MobilityModel> sinkMobility = wifiNodes.Get (0)->GetObject<MobilityModel> ();
   sinkMobility->SetPosition (Vector (distance/2, distance/2, 0.0));
 
   // Print position of each node
   std::cout << "Node positions:" << std::endl;
 
-  for (auto node = c.Begin (); node != c.End (); ++node)
+  for (auto node = wifiNodes.Begin (); node != wifiNodes.End (); ++node)
     {
       Ptr<MobilityModel> position = (*node)->GetObject<MobilityModel> ();
       Vector pos = position->GetPosition ();
@@ -194,24 +194,24 @@ main(int argc, char* argv[])
   std::cout << std::endl;
 
   InternetStackHelper internet;
-  internet.Install(c);
+  internet.Install(wifiNodes);
 
   Ipv4AddressHelper ipv4;
   ipv4.SetBase("10.1.0.0", "255.255.0.0");
   Ipv4InterfaceContainer i = ipv4.Assign(devices);
 
-  for (uint32_t j = 1; j < c.GetN (); ++j)
+  for (uint32_t j = 1; j < wifiNodes.GetN (); ++j)
   {
     // Get sink address
     portNumber++;
 
     TypeId tid = TypeId::LookupByName("ns3::UdpSocketFactory");
-    Ptr<Socket> recvSink = Socket::CreateSocket(c.Get (0), tid);
+    Ptr<Socket> recvSink = Socket::CreateSocket(wifiNodes.Get (0), tid);
     InetSocketAddress local = InetSocketAddress(i.GetAddress(0,0), portNumber);
     recvSink->Bind(local);
     recvSink->SetRecvCallback(MakeCallback(&ReceivePacket));
 
-    Ptr<Socket> source = Socket::CreateSocket(c.Get (j), tid);
+    Ptr<Socket> source = Socket::CreateSocket(wifiNodes.Get (j), tid);
     InetSocketAddress remote = InetSocketAddress(i.GetAddress(0,0), portNumber);
     source->Connect(remote);
 
