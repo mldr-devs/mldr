@@ -16,7 +16,6 @@ from reinforced_lib.logs import *
 from mldr.envs.ns3_ai_structures import Env, Act
 
 
-PNAME = 'scenario'
 MEMBLOCK_KEY = 2333
 MEM_SIZE = 128
 
@@ -52,6 +51,7 @@ if __name__ == '__main__':
     args.add_argument('--seed', type=int, default=100)
     args.add_argument('--mempoolKey', type=int, default=1234)
     args.add_argument('--ns3Path', type=str, default='')
+    args.add_argument('--scenario', type=str, default='scenario')
 
     # ns-3 args
     args.add_argument('--agentName', type=str, default='UCB')
@@ -95,6 +95,7 @@ if __name__ == '__main__':
 
     agent = args['agentName']
     mempool_key = args.pop('mempoolKey')
+    scenario = args.pop('scenario')
 
     ns3_args = args
     ns3_args['RngRun'] = seed
@@ -157,7 +158,7 @@ if __name__ == '__main__':
         rlib.init(seed)
 
     # set up the environment
-    exp = Experiment(mempool_key, MEM_SIZE, PNAME, ns3_path, using_waf=False)
+    exp = Experiment(mempool_key, MEM_SIZE, scenario, ns3_path, using_waf=False)
     var = Ns3AIRL(MEMBLOCK_KEY, Env, Act)
 
     try:
