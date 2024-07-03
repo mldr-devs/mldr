@@ -233,7 +233,6 @@ main(int argc, char* argv[])
   PopulateARPcache ();
 
   // Install FlowMonitor
-  Ptr<FlowMonitor> monitor;
   FlowMonitorHelper flowmon;
   monitor = flowmon.InstallAll ();
 
