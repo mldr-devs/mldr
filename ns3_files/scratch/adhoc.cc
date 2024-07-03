@@ -469,9 +469,9 @@ ExecuteAction ()
     }
 
   // Set CW
-  // AttributeContainerValue<UintegerValue> cwValue (std::vector {UintegerValue (pow (2, 4 + cw_idx))});
-  // Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_Txop/MinCws", cwValue);
-  // Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_Txop/MaxCws", cwValue);
+  AttributeContainerValue<UintegerValue> cwValue (std::vector {UintegerValue (pow (2, 4 + cw_idx))});
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_Txop/MinCws", cwValue);
+  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_Txop/MaxCws", cwValue);
 
   // Enable or disable RTS/CTS
   uint64_t ctsThrLow = 0;
