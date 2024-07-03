@@ -58,6 +58,8 @@ void GetFuzzFlows ();
 void GetWarmupFlows ();
 void PopulateARPcache ();
 void ExecuteAction ();
+void ReceivePacket (Ptr<Socket> socket);
+void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, Time pktInterval);
 
 /***** Global variables and constants *****/
 
@@ -78,62 +80,28 @@ double warmupTX = 0;
 double warmupLost = 0;
 Time warmupDelay = Seconds(0);
 double counter = 0;
+uint32_t packetCounter = 0;
 
 Ptr<FlowMonitor> monitor;
 std::map<FlowId, FlowMonitor::FlowStats> previousStats;
 
 std::ostringstream csvLogOutput;
 
-
-uint32_t packetCounter{0};
-/**
- * Function called when a packet is received.
- *
- * \param socket The receiving socket.
- */
-void
-ReceivePacket(Ptr<Socket> socket)
-{
-    while (socket->Recv())
-    {
-      packetCounter++;
-    }
-}
-
-/**
- * Generate traffic.
- *
- * \param socket The sending socket.
- * \param pktSize The packet size.
- * \param pktCount The packet count.
- * \param pktInterval The interval between two packets.
- */
-static void
-GenerateTraffic(Ptr<Socket> socket, uint32_t pktSize, Time pktInterval)
-{
-  // std::cout << "pakiet jedzie" << std::endl;
-  socket->Send(Create<Packet>(pktSize));
-  Simulator::Schedule(pktInterval,
-                      &GenerateTraffic,
-                      socket,
-                      pktSize,
-                      pktInterval);
-}
+/***** Main with scenario definition *****/
 
 int
 main(int argc, char* argv[])
 {
   // Initialize default simulation parameters
-
   uint32_t nWifi = 500;
   uint32_t maxQueueSize = 100;
   uint32_t packetSize = 256;
   uint32_t dataRate = 110;
   uint32_t channelWidth = 20;
   double distance = 10.;
-  uint32_t mcs{0};
-  uint32_t portNumber{9};
-  Time interPacketInterval{"1s"};
+  uint32_t mcs = 9;
+  uint32_t portNumber = 9;
+  Time interPacketInterval = Seconds (1.0);
 
   std::string agentName = "wifi";
   std::string pcapName = "";
@@ -223,11 +191,12 @@ main(int argc, char* argv[])
       std::cout << "Sta " << (*node)->GetId () << ":\tx=" << pos.x << ", y=" << pos.y << std::endl;
     }
 
+  std::cout << std::endl;
+
   InternetStackHelper internet;
   internet.Install(c);
 
   Ipv4AddressHelper ipv4;
-  NS_LOG_INFO("Assign IP Addresses.");
   ipv4.SetBase("10.1.0.0", "255.255.0.0");
   Ipv4InterfaceContainer i = ipv4.Assign(devices);
 
@@ -288,7 +257,20 @@ main(int argc, char* argv[])
       Simulator::Stop (Seconds (fuzzTime + 1.0 + simulationTime));
     }
 
+  // Record start time
+  std::cout << "Starting simulation..." << std::endl;
+  auto start = std::chrono::high_resolution_clock::now ();
+
+  // Run the simulation!
   Simulator::Run();
+
+  // Record stop time and count duration
+  auto finish = std::chrono::high_resolution_clock::now ();
+  std::chrono::duration<double> elapsed = finish - start;
+
+  std::cout << "Done!" << std::endl
+            << "Elapsed time: " << elapsed.count () << " s" << std::endl
+            << std::endl;
 
   Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
   std::map<FlowId, FlowMonitor::FlowStats> stats = monitor->GetFlowStats ();
@@ -345,6 +327,8 @@ main(int argc, char* argv[])
   m_env->SetFinish ();
   return 0;
 }
+
+/***** Function definitions *****/
 
 void
 PopulateARPcache ()
@@ -515,4 +499,24 @@ GetFuzzFlows ()
       previousTX += stat.second.txPackets;
       previousDelay += stat.second.delaySum;
     }
+}
+
+void
+ReceivePacket(Ptr<Socket> socket)
+{
+  while (socket->Recv())
+    {
+      packetCounter++;
+    }
+}
+
+void
+GenerateTraffic(Ptr<Socket> socket, uint32_t pktSize, Time pktInterval)
+{
+  socket->Send(Create<Packet>(pktSize));
+  Simulator::Schedule(pktInterval,
+                      &GenerateTraffic,
+                      socket,
+                      pktSize,
+                      pktInterval);
 }
