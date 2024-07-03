@@ -236,12 +236,12 @@ main(int argc, char* argv[])
   FlowMonitorHelper flowmon;
   monitor = flowmon.InstallAll ();
 
-  // // Generate PCAP at AP
-  // if (!pcapName.empty ())
-  //   {
-  //     wifiPhy.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11_RADIO);
-  //     wifiPhy.EnablePcap (pcapName, devices(0));
-  //   }
+   // Generate PCAP at AP
+   if (!pcapName.empty ())
+     {
+       wifiPhy.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11_RADIO);
+       wifiPhy.EnablePcap (pcapName, devices.Get (0));
+     }
 
   // Schedule interaction with the agent
   if (agentName != "wifi")
