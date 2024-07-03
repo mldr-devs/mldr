@@ -36,7 +36,7 @@ struct sEnv
 
 struct sAct
 {
-  uint8_t cw;
+  int cw;
   bool rts_cts;
   bool ampdu;
   bool end_warmup;
@@ -52,6 +52,7 @@ void InstallTrafficGenerator (Ptr<ns3::Node> fromNode, Ptr<ns3::Node> toNode, ui
                               DataRate offeredLoad, uint32_t packetSize);
 void PopulateARPcache ();
 void ExecuteAction ();
+void SetNetworkConfiguration (int cw_idx, bool rts_cts, bool ampdu);
 
 /***** Global variables and constants *****/
 
@@ -60,6 +61,7 @@ std::map<uint32_t, uint64_t> warmupFlows;
 double fuzzTime = 5.;
 double simulationTime = 50.;
 double interactionTime = 0.5;
+double warmupEndTime = 0.;
 bool simulationPhase = false;
 
 double previousRX = 0;
@@ -84,7 +86,6 @@ int
 main (int argc, char *argv[])
 {
   // Initialize default simulation parameters
-
   uint32_t nWifi = 10;
   uint32_t maxQueueSize = 100;
   uint32_t packetSize = 1500;
@@ -95,37 +96,53 @@ main (int argc, char *argv[])
   std::string agentName = "wifi";
   std::string pcapName = "";
   std::string csvPath = "results.csv";
-  std::string csvLogPath = "simualationsLogs.csv";
+  std::string csvLogPath = "logs.csv";
+
+  int cw_idx = -1;
+  bool rts_cts = false;
+  bool ampdu = true;
 
   // Parse command line arguments
   CommandLine cmd;
   cmd.AddValue ("agentName", "Name of the agent", agentName);
+  cmd.AddValue ("ampdu", "Enable A-MPDU (only for wifi agent)", ampdu);
   cmd.AddValue ("channelWidth", "Channel width (MHz)", channelWidth);
+  cmd.AddValue ("csvLogPath", "Path to output CSV log file", csvLogPath);
   cmd.AddValue ("csvPath", "Path to output CSV file", csvPath);
+  cmd.AddValue ("cw", "Contention window (const CW = 2 ^ (4 + x) if x >= 0) (only for wifi agent)", cw_idx);
   cmd.AddValue ("dataRate", "Traffic generator data rate (Mb/s)", dataRate);
   cmd.AddValue ("distance", "Max distance between AP and STAs (m)", distance);
   cmd.AddValue ("fuzzTime", "Maximum fuzz value (s)", fuzzTime);
   cmd.AddValue ("interactionTime", "Time between agent actions (s)", interactionTime);
+  cmd.AddValue ("maxQueueSize", "Max queue size (packets)", maxQueueSize);
   cmd.AddValue ("nWifi", "Number of stations", nWifi);
   cmd.AddValue ("packetSize", "Packets size (B)", packetSize);
   cmd.AddValue ("pcapName", "Name of a PCAP file generated from the AP", pcapName);
+  cmd.AddValue ("rtsCts", "Enable RTS/CTS (only for wifi agent)", rts_cts);
   cmd.AddValue ("simulationTime", "Duration of simulation (s)", simulationTime);
-  cmd.AddValue ("maxQueueSize", "Max queue size (packets)", maxQueueSize);
   cmd.Parse (argc, argv);
 
   // Print simulation settings to screen
   std::cout << std::endl
             << "Simulating an IEEE 802.11ax devices with the following settings:" << std::endl
+            << "- agent: " << agentName << std::endl
             << "- frequency band: 5 GHz" << std::endl
             << "- max data rate: " << dataRate << " Mb/s" << std::endl
             << "- channel width: " << channelWidth << " Mhz" << std::endl
             << "- packets size: " << packetSize << " B" << std::endl
+            << "- max queue size: " << maxQueueSize << " packets" << std::endl
             << "- number of stations: " << nWifi << std::endl
             << "- max distance between AP and STAs: " << distance << " m" << std::endl
             << "- simulation time: " << simulationTime << " s" << std::endl
             << "- max fuzz time: " << fuzzTime << " s" << std::endl
-            << "- interaction time: " << interactionTime << " s" << std::endl << std::endl
-            << "- max queue size: " << maxQueueSize << " packets" << std::endl << std::endl;
+            << "- interaction time: " << interactionTime << " s" << std::endl;
+
+  if (agentName == "wifi")
+    {
+      std::cout << "- CW: " << (cw_idx >= 0 ? "2 ^ (4 + " + std::to_string (cw_idx) + ")" : "default" ) << std::endl
+                << "- RTS/CTS: " << (rts_cts ? "enabled" : "disabled") << std::endl
+                << "- A-MPDU: " << (ampdu ? "enabled" : "disabled") << std::endl;
+    }
 
   // Create AP and stations
   NodeContainer wifiApNode (1);
@@ -147,7 +164,7 @@ main (int argc, char *argv[])
   apMobility->SetPosition (Vector (0.0, 0.0, 0.0));
 
   // Print position of each node
-  std::cout << "Node positions:" << std::endl;
+  std::cout << std::endl << "Node positions:" << std::endl;
 
   // AP position
   Ptr<MobilityModel> position = wifiApNode.Get (0)->GetObject<MobilityModel> ();
@@ -235,16 +252,17 @@ main (int argc, char *argv[])
     }
 
   // Schedule interaction with the agent
-  if (agentName != "wifi")
+  if (agentName == "wifi")
+    {
+      SetNetworkConfiguration (cw_idx, rts_cts, ampdu);
+      Simulator::Schedule (Seconds (fuzzTime + 1.0), &GetWarmupFlows);
+      Simulator::Stop (Seconds (fuzzTime + 1.0 + simulationTime));
+    }
+  else
     {
       m_env->SetCond (2, 0);
       Simulator::Schedule (Seconds (fuzzTime + 1.0), &GetFuzzFlows);
       Simulator::Schedule (Seconds (fuzzTime + 1.0 + interactionTime), &ExecuteAction);
-    }
-  else
-    {
-      Simulator::Schedule (Seconds (fuzzTime + 1.0), &GetWarmupFlows);
-      Simulator::Stop (Seconds (fuzzTime + 1.0 + simulationTime));
     }
 
   // Record start time
@@ -267,6 +285,10 @@ main (int argc, char *argv[])
   double jainsIndexN = 0.;
   double jainsIndexD = 0.;
 
+  Time latencySum = Seconds(0);
+  double lostSum = 0.;
+  double txSum = 0.;
+
   Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
   std::map<FlowId, FlowMonitor::FlowStats> stats = monitor->GetFlowStats ();
   std::cout << "Results: " << std::endl;
@@ -283,6 +305,10 @@ main (int argc, char *argv[])
       jainsIndexN += flow;
       jainsIndexD += flow * flow;
 
+      latencySum += stat.second.delaySum;
+      lostSum += stat.second.lostPackets;
+      txSum += stat.second.txPackets;
+
       Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (stat.first);
       std::cout << "Flow " << stat.first << " (" << t.sourceAddress << " -> "
                 << t.destinationAddress << ")\tThroughput: " << flow << " Mb/s" << std::endl;
@@ -290,9 +316,9 @@ main (int argc, char *argv[])
 
   double totalThr = jainsIndexN;
   double fairnessIndex = jainsIndexN * jainsIndexN / (nWifiReal * jainsIndexD);
-  double totalPLR = warmupLost / warmupTX;
-  double totalLatency = warmupDelay.GetSeconds ();
-  double latencyPerPacketTotal = warmupDelay.GetSeconds () / warmupTX;
+  double totalPLR = (lostSum - warmupLost) / (txSum - warmupTX);
+  double totalLatency = latencySum.GetSeconds() - warmupDelay.GetSeconds ();
+  double latencyPerPacketTotal = totalLatency / (txSum - warmupTX);
 
   // Print results
   std::cout << std::endl
@@ -306,11 +332,11 @@ main (int argc, char *argv[])
   // Gather results in CSV format
   std::ostringstream csvOutput;
   csvOutput << agentName << "," << dataRate << "," << distance << "," << nWifi << "," << nWifiReal << ","
-            << RngSeedManager::GetRun () << "," << fairnessIndex << "," << latencyPerPacketTotal << ","
-            << totalPLR << "," << totalThr << std::endl;
+            << RngSeedManager::GetRun () << "," << warmupEndTime << "," << fairnessIndex << ","
+            << latencyPerPacketTotal << "," << totalPLR << "," << totalThr << std::endl;
 
   // Print results to std output
-  std::cout << "agent,dataRate,distance,nWifi,nWifiReal,seed,fairness,latency,plr,throughput"
+  std::cout << "agent,dataRate,distance,nWifi,nWifiReal,seed,warmupEnd,fairness,latency,plr,throughput"
             << std::endl
             << csvOutput.str ();
 
@@ -335,6 +361,9 @@ main (int argc, char *argv[])
 void
 GetWarmupFlows ()
 {
+  warmupEndTime = Simulator::Now ().GetSeconds ();
+  std::cout << "Warmup period finished after " << warmupEndTime << " s" << std::endl;
+
   previousStats = monitor->GetFlowStats ();
   for (auto &stat : monitor->GetFlowStats ())
     {
@@ -503,11 +532,12 @@ ExecuteAction ()
   m_env->SetCompleted ();
 
   auto act = m_env->ActionGetterCond ();
-  uint8_t cw_idx = act->cw;
+  int cw_idx = act->cw;
   bool rts_cts = act->rts_cts;
   bool ampdu = act->ampdu;
   bool end_warmup = act->end_warmup;
   m_env->GetCompleted ();
+
   // End warmup period, define simulation stop time, and reset stats
   if (end_warmup && !simulationPhase)
     {
@@ -516,10 +546,22 @@ ExecuteAction ()
       simulationPhase = true;
     }
 
-  // Set CW
-  AttributeContainerValue<UintegerValue> cwValue (std::vector {UintegerValue (pow (2, 4 + cw_idx))});
-  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_Txop/MinCws", cwValue);
-  Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_Txop/MaxCws", cwValue);
+  SetNetworkConfiguration (cw_idx, rts_cts, ampdu);
+
+  Simulator::Schedule (Seconds(interactionTime), &ExecuteAction);
+  counter++;
+}
+
+void
+SetNetworkConfiguration (int cw_idx, bool rts_cts, bool ampdu)
+{
+  if (cw_idx >= 0)
+    {
+      // Set CW
+      AttributeContainerValue<UintegerValue> cwValue (std::vector {UintegerValue (pow (2, 4 + cw_idx))});
+      Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_Txop/MinCws", cwValue);
+      Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_Txop/MaxCws", cwValue);
+    }
 
   // Enable or disable RTS/CTS
   uint64_t ctsThrLow = 0;
@@ -532,7 +574,4 @@ ExecuteAction ()
   uint64_t ampduSizeHigh = 6500631;
   UintegerValue ampduSize = (ampdu ? UintegerValue (ampduSizeHigh) : UintegerValue (ampduSizeLow));
   Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_MaxAmpduSize", ampduSize);
-
-  Simulator::Schedule (Seconds(interactionTime), &ExecuteAction);
-  counter++;
 }
