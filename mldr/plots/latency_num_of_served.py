@@ -3,8 +3,6 @@ from collections import defaultdict
 from glob import glob
 from xml.etree import ElementTree
 
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 from mldr.plots.config import get_cmap
@@ -14,7 +12,12 @@ if __name__ == '__main__':
     args = ArgumentParser()
     args.add_argument('--dataRate', type=int, required=True)
     args.add_argument('--nWifi', type=int, required=True)
+    args.add_argument('--latencyThr', type=float, default=0.005)
+    args.add_argument('--reliabilityThr', type=float, default=0.99)
     args = args.parse_args()
+
+    print(f'Latency threshold: {1000 * args.latencyThr} ms')
+    print(f'Reliability threshold: {100 * args.reliabilityThr}%\n')
 
     agent_files = defaultdict(list)
     agent_results = defaultdict(list)
@@ -31,28 +34,28 @@ if __name__ == '__main__':
             flowstats = next(iter(tree.getroot()))
 
             for flow in flowstats:
+                agent_results[agent].append([])
+
                 for bins in flow:
                     if bins.tag != 'delayHistogram':
                         continue
 
                     for bin in bins:
                         start, width, count = float(bin.attrib['start']), float(bin.attrib['width']), float(bin.attrib['count'])
-                        agent_results[agent].append((start, width, count))
+                        agent_results[agent][-1].append((start, width, count))
 
-    for i, (agent, results) in enumerate(agent_results.items()):
-        df = pd.DataFrame(results, columns=['start', 'width', 'count'])
-        df = df.groupby('start').sum()
-        start, count = df.index.values, df['count'].values
-        start, count = np.concatenate(([0], start)), np.concatenate(([0], count))
-        count = np.cumsum(count) / count.sum()
-        plt.plot(start, count, label=agent, color=cmap[i], linewidth=1)
+    for agent, results in agent_results.items():
+        served_devices = 0
+        print(f'Agent: {agent}')
 
-    plt.xlabel('Latency [s]')
-    plt.ylabel('CDF')
-    plt.xlim(left=0)
-    plt.ylim(0, 1)
-    plt.grid()
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(f'latency_cdf_plot_n{args.nWifi}_r{args.dataRate}.pdf', bbox_inches='tight')
-    plt.show()
+        for i, flow in enumerate(results):
+            df = pd.DataFrame(flow, columns=['start', 'width', 'count'])
+            end, count = df['start'].values + df['width'].values, df['count'].values
+            rel = count[end <= args.latencyThr].sum() / count.sum()
+
+            print(f'STA {i} - reliability: {100 * rel:.2f}%')
+
+            if rel >= args.reliabilityThr:
+                served_devices += 1
+
+        print(f'Served devices: {served_devices}/{len(results)}\n')
