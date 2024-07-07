@@ -6,7 +6,6 @@ from collections import deque
 
 import jax
 import numpy as np
-import tensorflow_probability.substrates.jax as tfp
 from py_interface import *
 from reinforced_lib import RLib
 from reinforced_lib.agents.mab import *
@@ -100,19 +99,20 @@ if __name__ == '__main__':
     ns3_args = args
     ns3_args['RngRun'] = seed
 
-    # set up the reward distribution and warmup
-    reward_probs = [args.pop('massive'), args.pop('throughput'), args.pop('urllc')]
-    reward_dist = tfp.distributions.Categorical(probs=reward_probs)
+    # set up the reward function
+    reward_probs = np.asarray([args.pop('massive'), args.pop('throughput'), args.pop('urllc')])
 
     def normalize_rewards(env):
         fairness, throughput, latency = env.fairness, env.throughput, env.latency
 
-        fairness = None
+        fairness = 0.0  # TODO
         throughput = throughput / args['dataRate']
         latency = 1 - latency / LATENCY_THRESHOLD
+        rewards = np.asarray([fairness, throughput, latency])
 
-        return fairness, throughput, latency
+        return np.dot(reward_probs, rewards)
 
+    # set up the warmup function
     max_warmup = args.pop('maxWarmup')
     use_warmup = args.pop('useWarmup')
 
@@ -171,10 +171,9 @@ if __name__ == '__main__':
                     break
 
                 key, subkey = jax.random.split(key)
-                reward_id = reward_dist.sample(seed=subkey)
-                rewards = normalize_rewards(data.env)
+                reward = normalize_rewards(data.env)
 
-                action = rlib.sample(rewards[reward_id])
+                action = rlib.sample(reward)
                 cw, rts_cts, ampdu = np.unravel_index(action, (N_CW, N_RTS_CTS, N_AMPDU))
 
                 rlib.log('cw', cw)
