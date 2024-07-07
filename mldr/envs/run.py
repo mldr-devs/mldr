@@ -103,13 +103,11 @@ if __name__ == '__main__':
     reward_probs = np.asarray([args.pop('massive'), args.pop('throughput'), args.pop('urllc')])
 
     def normalize_rewards(env):
-        fairness, throughput, latency = env.fairness, env.throughput, env.latency
+        fairness = 1 + 10 * (env.fairness - 1)
+        throughput = env.throughput / args['dataRate']
+        latency = 1 - env.latency / LATENCY_THRESHOLD
 
-        fairness = 0.0  # TODO
-        throughput = throughput / args['dataRate']
-        latency = 1 - latency / LATENCY_THRESHOLD
         rewards = np.asarray([fairness, throughput, latency])
-
         return np.dot(reward_probs, rewards)
 
     # set up the warmup function
