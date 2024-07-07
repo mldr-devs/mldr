@@ -97,6 +97,7 @@ main (int argc, char *argv[])
   std::string pcapName = "";
   std::string csvPath = "results.csv";
   std::string csvLogPath = "logs.csv";
+  std::string flowmonPath = "flowmon.xml";
 
   int cw_idx = -1;
   bool rts_cts = false;
@@ -112,6 +113,7 @@ main (int argc, char *argv[])
   cmd.AddValue ("cw", "Contention window (const CW = 2 ^ (4 + x) if x >= 0) (only for wifi agent)", cw_idx);
   cmd.AddValue ("dataRate", "Traffic generator data rate (Mb/s)", dataRate);
   cmd.AddValue ("distance", "Max distance between AP and STAs (m)", distance);
+  cmd.AddValue ("flowmonPath", "Path to output flow monitor XML file", flowmonPath);
   cmd.AddValue ("fuzzTime", "Maximum fuzz value (s)", fuzzTime);
   cmd.AddValue ("interactionTime", "Time between agent actions (s)", interactionTime);
   cmd.AddValue ("maxQueueSize", "Max queue size (packets)", maxQueueSize);
@@ -349,7 +351,10 @@ main (int argc, char *argv[])
   outputLogFile << csvLogOutput.str ();
   std::cout << std::endl << "Simulation log saved to: " << csvLogPath << std::endl << std::endl;
 
-  //Clean-up
+  monitor->SerializeToXmlFile (flowmonPath, true, true);
+  std::cout << "Flow monitor data saved to: " << flowmonPath << std::endl;
+
+  // Cleanup
   Simulator::Destroy ();
   m_env->SetFinish ();
 

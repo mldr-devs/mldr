@@ -61,6 +61,7 @@ if __name__ == '__main__':
     args.add_argument('--cw', type=int, default=-1)
     args.add_argument('--dataRate', type=int, default=110)
     args.add_argument('--distance', type=float, default=10.0)
+    args.add_argument('--flowmonPath', type=str, default='flowmon.xml')
     args.add_argument('--fuzzTime', type=float, default=5.0)
     args.add_argument('--interactionTime', type=float, default=0.5)
     args.add_argument('--maxQueueSize', type=int, default=100)

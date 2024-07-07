@@ -107,6 +107,7 @@ main(int argc, char* argv[])
   std::string pcapName = "";
   std::string csvPath = "results.csv";
   std::string csvLogPath = "simualationsLogs.csv";
+  std::string flowmonPath = "flowmon.xml";
 
   // Parse command line arguments
   CommandLine cmd;
@@ -115,6 +116,7 @@ main(int argc, char* argv[])
   cmd.AddValue ("csvPath", "Path to output CSV file", csvPath);
   cmd.AddValue ("dataRate", "Traffic generator data rate (Mb/s)", dataRate);
   cmd.AddValue ("distance", "Max distance between AP and STAs (m)", distance);
+  cmd.AddValue ("flowmonPath", "Path to output flow monitor XML file", flowmonPath);
   cmd.AddValue ("fuzzTime", "Maximum fuzz value (s)", fuzzTime);
   cmd.AddValue ("interactionTime", "Time between agent actions (s)", interactionTime);
   cmd.AddValue ("nWifi", "Number of stations", nWifi);
@@ -322,8 +324,14 @@ main(int argc, char* argv[])
             << "Received packets: " << packetCounter << std::endl
             << std::endl;
 
+  // Print results to file
+  monitor->SerializeToXmlFile (flowmonPath, true, true);
+  std::cout << "Flow monitor data saved to: " << flowmonPath << std::endl;
+
+  // Cleanup
   Simulator::Destroy ();
   m_env->SetFinish ();
+
   return 0;
 }
 
