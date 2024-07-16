@@ -218,7 +218,7 @@ main (int argc, char *argv[])
   NetDeviceContainer apDevice;
   apDevice = wifi.Install (phy, mac, wifiApNode);
 
-  // Set channel width and shortest GI
+  // Set channel width
   Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/ChannelSettings",
                StringValue ("{0, " + std::to_string (channelWidth) + ", BAND_5GHZ, 0}"));
 
@@ -491,7 +491,6 @@ PopulateARPcache ()
 void
 ExecuteAction (std::string agentName, double dataRate, double distance, uint32_t nWifi)
 {
-  std::cout << "ExecuteAction" << std::endl;
   double nWifiReal = 0;
   double jainsIndexNTemp = 0.;
   double jainsIndexDTemp = 0.;
