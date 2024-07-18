@@ -80,7 +80,6 @@ double warmupRX = 0;
 double warmupTX = 0;
 double warmupLost = 0;
 Time warmupDelay = Seconds(0);
-double counter = 0;
 uint32_t packetCounter = 0;
 
 Ptr<FlowMonitor> monitor;
@@ -95,9 +94,7 @@ main(int argc, char* argv[])
 {
   // Initialize default simulation parameters
   uint32_t nWifi = 500;
-  uint32_t maxQueueSize = 100;
   uint32_t packetSize = 256;
-  uint32_t dataRate = 110;
   uint32_t channelWidth = 20;
   uint32_t mcs = 0;
   double distance = 10.;
@@ -121,13 +118,11 @@ main(int argc, char* argv[])
   cmd.AddValue ("csvLogPath", "Path to output CSV log file", csvLogPath);
   cmd.AddValue ("csvPath", "Path to output CSV file", csvPath);
   cmd.AddValue ("cw", "Contention window (const CW = 2 ^ (4 + x) if x >= 0) (only for wifi agent)", cw_idx);
-  cmd.AddValue ("dataRate", "Not used!", dataRate);
   cmd.AddValue ("distance", "Max distance between AP and STAs (m)", distance);
   cmd.AddValue ("flowmonPath", "Path to throughput log file", flowmonPath);
   cmd.AddValue ("fuzzTime", "Maximum fuzz value (s)", fuzzTime);
   cmd.AddValue ("interactionTime", "Time between agent actions (s)", interactionTime);
   cmd.AddValue ("interPacketInterval", "Inter-packet interval (s)", interPacketInterval);
-  cmd.AddValue ("maxQueueSize", "Not used!", maxQueueSize);
   cmd.AddValue ("mcs", "MCS index", mcs);
   cmd.AddValue ("nWifi", "Number of stations", nWifi);
   cmd.AddValue ("packetSize", "Packets size (B)", packetSize);
@@ -141,11 +136,9 @@ main(int argc, char* argv[])
             << "Simulating an IEEE 802.11ax devices with the following settings:" << std::endl
             << "- agent: " << agentName << std::endl
             << "- frequency band: 5 GHz" << std::endl
-            << "- max data rate: " << dataRate << " Mb/s" << std::endl
             << "- channel width: " << channelWidth << " Mhz" << std::endl
             << "- MCS index: " << mcs << std::endl
             << "- packets size: " << packetSize << " B" << std::endl
-            << "- max queue size: " << maxQueueSize << " packets" << std::endl
             << "- number of stations: " << nWifi << std::endl
             << "- area size: " << distance << " m" << std::endl
             << "- inter-packet interval: " << interPacketInterval << " s" << std::endl
@@ -345,6 +338,7 @@ main(int argc, char* argv[])
             << "Total Latency: " << totalLatency << std::endl
             << "Latency per packet: " << latencyPerPacketTotal << std::endl
             << "Received packets: " << packetCounter << std::endl
+            << "Served stations: " << nWifiReal << std::endl
             << std::endl;
 
   // Print results to file
@@ -486,7 +480,6 @@ ExecuteAction ()
   SetNetworkConfiguration (cw_idx, rts_cts, ampdu);
 
   Simulator::Schedule (Seconds(interactionTime), &ExecuteAction);
-  counter++;
 }
 
 void

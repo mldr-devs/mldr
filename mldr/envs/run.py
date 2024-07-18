@@ -64,7 +64,9 @@ if __name__ == '__main__':
     args.add_argument('--flowmonPath', type=str, default='flowmon.xml')
     args.add_argument('--fuzzTime', type=float, default=5.0)
     args.add_argument('--interactionTime', type=float, default=0.5)
+    args.add_argument('--interPacketInterval', type=float, default=0.5)
     args.add_argument('--maxQueueSize', type=int, default=100)
+    args.add_argument('--mcs', type=int, default=0)
     args.add_argument('--nWifi', type=int, default=10)
     args.add_argument('--packetSize', type=int, default=1500)
     args.add_argument('--rtsCts', action=argparse.BooleanOptionalAction, default=False)
@@ -84,6 +86,14 @@ if __name__ == '__main__':
 
     # read the arguments
     ns3_path = args.pop('ns3Path')
+
+    if args['scenario'] == 'scenario':
+        del args['interPacketInterval']
+        dataRate = args['dataRate']
+    elif args['scenario'] == 'adhoc':
+        del args['dataRate']
+        del args['maxQueueSize']
+        dataRate = (args['packetSize'] * args['nWifi'] / args['interPacketInterval']) / 1e6
 
     if os.environ.get('NS3_DIR'):
         ns3_path = os.environ['NS3_DIR']
@@ -105,7 +115,7 @@ if __name__ == '__main__':
 
     def normalize_rewards(env):
         fairness = 1 + 10 * (env.fairness - 1)
-        throughput = env.throughput / args['dataRate']
+        throughput = env.throughput / dataRate
         latency = 1 - env.latency / LATENCY_THRESHOLD
 
         rewards = np.asarray([fairness, throughput, latency])

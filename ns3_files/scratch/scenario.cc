@@ -80,8 +80,6 @@ double warmupTX = 0;
 double warmupLost = 0;
 Time warmupDelay = Seconds(0);
 
-double counter = 0;
-
 Ptr<FlowMonitor> monitor;
 std::map<FlowId, FlowMonitor::FlowStats> previousWarmupStats;
 std::map<FlowId, FlowMonitor::FlowStats> previousStats;
@@ -563,7 +561,6 @@ ExecuteAction (std::string agentName, double dataRate, double distance, uint32_t
   << fairnessIndex << "," << latency << "," << PLR << "," << throughput << "," << Simulator::Now().GetSeconds() << std::endl;
 
   Simulator::Schedule (Seconds(interactionTime), &ExecuteAction, agentName, dataRate, distance, nWifi);
-  counter++;
 }
 
 void
