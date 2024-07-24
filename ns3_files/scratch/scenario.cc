@@ -558,7 +558,7 @@ ExecuteAction (std::string agentName, double dataRate, double distance, uint32_t
   SetNetworkConfiguration (cw_idx, rts_cts, ampdu);
 
   csvLogOutput << agentName << "," << dataRate << "," << distance << "," << nWifi << "," << nWifiReal << "," << RngSeedManager::GetRun () << "," << end_warmup << ","
-  << fairnessIndex << "," << latency << "," << PLR << "," << throughput << "," << Simulator::Now().GetSeconds() << std::endl;
+  << fairnessIndex << "," << latencyPerPacket << "," << PLR << "," << throughput << "," << Simulator::Now().GetSeconds() << std::endl;
 
   Simulator::Schedule (Seconds(interactionTime), &ExecuteAction, agentName, dataRate, distance, nWifi);
 }
@@ -635,7 +635,7 @@ LogWarmupStats (std::string agentName, double dataRate, double distance, uint32_
     previousWarmupStats = stats;
 
     csvLogOutput << agentName << "," << dataRate << "," << distance << "," << nWifi << "," << nWifiReal << "," << RngSeedManager::GetRun () << "," << 0 << "," 
-    << fairnessIndex << "," << latency << "," << PLR << "," << throughput << "," << Simulator::Now().GetSeconds() << std::endl;
+    << fairnessIndex << "," << latencyPerPacket << "," << PLR << "," << throughput << "," << Simulator::Now().GetSeconds() << std::endl;
     Simulator::Schedule (Seconds(interactionTime), &LogWarmupStats, agentName, dataRate, distance, nWifi);
   }
 }
