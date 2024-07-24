@@ -89,6 +89,7 @@ if __name__ == '__main__':
 
     if args['scenario'] == 'scenario':
         del args['interPacketInterval']
+        del args['mcs']
         dataRate = args['dataRate']
     elif args['scenario'] == 'adhoc':
         del args['dataRate']

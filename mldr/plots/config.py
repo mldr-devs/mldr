@@ -36,4 +36,4 @@ def set_style() -> None:
 
 
 def get_cmap(n: int) -> plt.cm:
-    return plt.cm.viridis(np.linspace(0., 0.8, n))
+    return plt.cm.viridis(np.linspace(0.25, 0.75, n))
