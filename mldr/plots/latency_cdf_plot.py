@@ -49,7 +49,7 @@ if __name__ == '__main__':
 
     plt.xlabel('Latency [s]')
     plt.ylabel('CDF')
-    plt.xlim(left=0)
+    plt.xscale('logit')
     plt.ylim(0, 1)
     plt.grid()
     plt.legend()
