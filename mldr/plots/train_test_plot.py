@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
     for i, (agent, color) in enumerate(zip(agents, cmap)):
         agent_thr = df[df['agent'] == agent]
-        agent_thr = agent_thr[agent_thr['warmupEnd']]
+        agent_thr = agent_thr[agent_thr['warmupEnd'] == 1]
         agent_thr = agent_thr['throughput']
 
         plt.boxplot(
