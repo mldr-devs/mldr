@@ -70,11 +70,6 @@ double previousTX = 0;
 double previousLost = 0;
 Time previousDelay = Seconds(0);
 
-double previousWarmupRX = 0;
-double previousWarmupTX = 0;
-double previousWarmupLost = 0;
-Time previousWarmupDelay = Seconds(0);
-
 double warmupRX = 0;
 double warmupTX = 0;
 double warmupLost = 0;
@@ -83,7 +78,6 @@ Time warmupDelay = Seconds(0);
 double counter = 0;
 
 Ptr<FlowMonitor> monitor;
-std::map<FlowId, FlowMonitor::FlowStats> previousWarmupStats;
 std::map<FlowId, FlowMonitor::FlowStats> previousStats;
 
 std::ostringstream csvLogOutput;
@@ -609,7 +603,7 @@ LogWarmupStats (std::string agentName, double dataRate, double distance, uint32_
 
     for (auto &stat : stats)
       {
-        double flow = 8 * ( stat.second.rxBytes - previousWarmupStats[stat.first].rxBytes) / (1e6 * interactionTime);
+        double flow = 8 * ( stat.second.rxBytes - previousStats[stat.first].rxBytes) / (1e6 * interactionTime);
         currentLost += stat.second.lostPackets;
         currentRX += stat.second.rxPackets;
         currentTX += stat.second.txPackets;
@@ -623,23 +617,33 @@ LogWarmupStats (std::string agentName, double dataRate, double distance, uint32_
         jainsIndexDTemp += flow * flow;
       }
 
-    Time latency = currentDelay - previousWarmupDelay;
-    double lostPackets =  currentLost - previousWarmupLost;
-    double rxPackets =  currentRX - previousWarmupRX;
-    double txPackets =  currentTX - previousWarmupTX;
+    Time latency = currentDelay - previousDelay;
+    double lostPackets =  currentLost - previousLost;
+    double rxPackets =  currentRX - previousRX;
+    double txPackets =  currentTX - previousTX;
     double latencyPerPacket = latency.GetSeconds() / rxPackets;
     double PLR = lostPackets/txPackets;
     double fairnessIndex = jainsIndexNTemp * jainsIndexNTemp / (nWifiReal * jainsIndexDTemp);
     double throughput = jainsIndexNTemp;
 
-    previousWarmupDelay = currentDelay;
-    previousWarmupLost = currentLost;
-    previousWarmupRX = currentRX;
-    previousWarmupTX = currentTX;
-    previousWarmupStats = stats;
+    previousDelay = currentDelay;
+    previousLost = currentLost;
+    previousRX = currentRX;
+    previousTX = currentTX;
+    previousStats = stats;
 
     csvLogOutput << agentName << "," << dataRate << "," << distance << "," << nWifi << "," << nWifiReal << "," << RngSeedManager::GetRun () << "," << 0 << "," 
     << fairnessIndex << "," << latency << "," << PLR << "," << throughput << "," << Simulator::Now().GetSeconds() << std::endl;
     Simulator::Schedule (Seconds(interactionTime), &LogWarmupStats, agentName, dataRate, distance, nWifi);
+  }
+  else {
+    monitor->ResetAllStats();
+    monitor->CheckForLostPackets ();
+    std::map<FlowId, FlowMonitor::FlowStats> stats = monitor->GetFlowStats ();
+    previousRX = 0;
+    previousTX = 0;
+    previousLost = 0;
+    previousDelay = Seconds(0);
+    previousStats = stats;
   }
 }
