@@ -37,9 +37,9 @@ if __name__ == '__main__':
 
                     for bin in bins:
                         start, width, count = float(bin.attrib['start']), float(bin.attrib['width']), float(bin.attrib['count'])
-                        agent_results[agent].append((start, width, count))
+                        agent_results[agent].append((1e3 * start, 1e3 * width, count))
 
-    for i, (agent, results) in enumerate(agent_results.items()):
+    for i, (agent, results) in enumerate(sorted(agent_results.items())):
         df = pd.DataFrame(results, columns=['start', 'width', 'count'])
         df = df.groupby('start').sum()
         start, count = df.index.values, df['count'].values
@@ -47,9 +47,9 @@ if __name__ == '__main__':
         count = np.cumsum(count) / count.sum()
         plt.plot(start, count, label=agent, color=cmap[i], linewidth=1)
 
-    plt.xlabel('Latency [s]')
+    plt.xlabel('Latency [ms]')
     plt.ylabel('CDF')
-    plt.xscale('logit')
+    plt.xlim(0, 150)
     plt.ylim(0, 1)
     plt.grid()
     plt.legend()
