@@ -53,11 +53,9 @@ struct sAct
 Ns3AIRL<sEnv, sAct> * m_env = new Ns3AIRL<sEnv, sAct> (DEFAULT_MEMBLOCK_KEY);
 
 /***** Functions declarations *****/
-
-void GetFuzzFlows ();
-void GetWarmupFlows ();
+void ResetMonitor ();
 void PopulateARPcache ();
-void ExecuteAction ();
+void ExecuteAction (std::string agentName, double distance, uint32_t nWifi);
 void SetNetworkConfiguration (int cw_idx, bool rts_cts, bool ampdu);
 void ReceivePacket (Ptr<Socket> socket);
 void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, double pktInterval);
@@ -69,7 +67,9 @@ std::map<uint32_t, uint64_t> warmupFlows;
 double fuzzTime = 5.;
 double simulationTime = 50.;
 double interactionTime = 0.5;
+double warmupEndTime = 0.;
 bool simulationPhase = false;
+bool useMabAgent = false;
 
 double previousRX = 0;
 double previousTX = 0;
@@ -152,6 +152,8 @@ main(int argc, char* argv[])
                 << "- RTS/CTS: " << (rts_cts ? "enabled" : "disabled") << std::endl
                 << "- A-MPDU: " << (ampdu ? "enabled" : "disabled") << std::endl;
     }
+
+  useMabAgent = agentName != "wifi";
 
   // Fix non-unicast data rate to be the same as that of unicast
   NodeContainer wifiNodes;
@@ -260,15 +262,11 @@ main(int argc, char* argv[])
   if (agentName == "wifi")
     {
       SetNetworkConfiguration (cw_idx, rts_cts, ampdu);
-      Simulator::Schedule (Seconds (fuzzTime + 1.0), &GetWarmupFlows);
-      Simulator::Stop (Seconds (fuzzTime + 1.0 + simulationTime));
     }
-  else
-    {
-      m_env->SetCond (2, 0);
-      Simulator::Schedule (Seconds (fuzzTime + 1.0), &GetFuzzFlows);
-      Simulator::Schedule (Seconds (fuzzTime + 1.0 + interactionTime), &ExecuteAction);
-    }
+
+  m_env->SetCond (2, 0);
+  Simulator::Schedule (Seconds (fuzzTime), &ResetMonitor);
+  Simulator::Schedule (Seconds (fuzzTime), &ExecuteAction, agentName, distance, nWifi);
 
   // Record start time
   std::cout << "Starting simulation..." << std::endl;
@@ -292,7 +290,7 @@ main(int argc, char* argv[])
   double lostPackets = 0;
   double rxPackets = 0;
   double txPackets = 0;
-  double Latency = 0;
+  double latencySum = 0;
   double jainsIndexN = 0;
   double jainsIndexD = 0;
   double nWifiReal = 0;
@@ -315,7 +313,7 @@ main(int argc, char* argv[])
       lostPackets += stat.second.lostPackets;
       rxPackets += stat.second.rxPackets;
       txPackets += stat.second.txPackets;
-      Latency += stat.second.delaySum.GetSeconds ();
+      latencySum += stat.second.delaySum.GetSeconds ();
 
       Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (stat.first);
       std::cout << "Flow " << stat.first << " (" << t.sourceAddress << " -> "
@@ -327,8 +325,8 @@ main(int argc, char* argv[])
   double totalThr = jainsIndexN;
   double fairnessIndex = jainsIndexN * jainsIndexN / (nWifiReal * jainsIndexD);
   double totalPLR = lostPackets / txPackets;
-  double totalLatency = Latency;
-  double latencyPerPacketTotal = Latency / rxPackets;
+  double totalLatency = latencySum;
+  double latencyPerPacketTotal = totalLatency / txPackets;
 
   // Print results
   std::cout << std::endl
@@ -337,15 +335,25 @@ main(int argc, char* argv[])
             << "PLR: " << totalPLR << std::endl
             << "Total Latency: " << totalLatency << std::endl
             << "Latency per packet: " << latencyPerPacketTotal << std::endl
-            << "Received packets: " << packetCounter << std::endl
-            << "Served stations: " << nWifiReal << std::endl
             << std::endl;
-
+  // Gather results in CSV format
+  std::ostringstream csvOutput;
+  csvOutput << agentName << "," << distance << "," << nWifi << "," << nWifiReal << ","
+            << RngSeedManager::GetRun () << "," << warmupEndTime << "," << fairnessIndex << ","
+            << latencyPerPacketTotal << "," << totalPLR << "," << totalThr << std::endl;
+  // Print results to std output
+  std::cout << "agent,distance,nWifi,nWifiReal,seed,warmupEnd,fairness,latency,plr,throughput"
+            << std::endl
+            << csvOutput.str ();
   // Print results to file
-  std::ofstream thrFile (flowmonPath);
-  thrFile << thrLogs.str ();
-  std::cout << "Throughput log saved to " << flowmonPath << std::endl;
-
+  std::ofstream outputFile (csvPath);
+  outputFile << csvOutput.str ();
+  std::cout << std::endl << "Simulation data saved to: " << csvPath;
+  std::ofstream outputLogFile (csvLogPath);
+  outputLogFile << csvLogOutput.str ();
+  std::cout << std::endl << "Simulation log saved to: " << csvLogPath << std::endl << std::endl;
+  monitor->SerializeToXmlFile (flowmonPath, true, true);
+  std::cout << "Flow monitor data saved to: " << flowmonPath << std::endl;
   // Cleanup
   Simulator::Destroy ();
   m_env->SetFinish ();
@@ -354,6 +362,17 @@ main(int argc, char* argv[])
 }
 
 /***** Function definitions *****/
+void
+ResetMonitor ()
+{
+  monitor->CheckForLostPackets ();
+  monitor->ResetAllStats ();
+  previousStats = monitor->GetFlowStats ();
+  previousRX = 0;
+  previousTX = 0;
+  previousLost = 0;
+  previousDelay = Seconds(0);
+}
 
 void
 PopulateARPcache ()
@@ -407,7 +426,7 @@ PopulateARPcache ()
 }
 
 void
-ExecuteAction ()
+ExecuteAction (std::string agentName, double distance, uint32_t nWifi)
 {
   double nWifiReal = 0;
   double jainsIndexNTemp = 0.;
@@ -446,40 +465,52 @@ ExecuteAction ()
   double fairnessIndex = jainsIndexNTemp * jainsIndexNTemp / (nWifiReal * jainsIndexDTemp);
   double throughput = jainsIndexNTemp;
 
-  csvLogOutput << lostPackets << "," << rxPackets << "," << txPackets << "," << PLR << "," << fairnessIndex << "," << throughput << "," << latencyPerPacket << std::endl;
-
   previousDelay = currentDelay;
   previousLost = currentLost;
   previousRX = currentRX;
   previousTX = currentTX;
   previousStats = stats;
 
+  bool end_warmup = false;
 
-  auto env = m_env->EnvSetterCond ();
-  env->fairness = fairnessIndex;
-  env->latency = latencyPerPacket;
-  env->plr = PLR;
-  env->throughput = throughput;
-  env->time = Simulator::Now ().GetSeconds () - (fuzzTime + 1.0);
-  m_env->SetCompleted ();
+  if (useMabAgent && Simulator::Now ().GetSeconds () >= fuzzTime)
+    {
+      auto env = m_env->EnvSetterCond ();
+      env->fairness = fairnessIndex;
+      env->latency = latencyPerPacket;
+      env->plr = PLR;
+      env->throughput = throughput;
+      env->time = Simulator::Now ().GetSeconds () - fuzzTime;
+      m_env->SetCompleted ();
 
-  auto act = m_env->ActionGetterCond ();
-  uint8_t cw_idx = act->cw;
-  bool rts_cts = act->rts_cts;
-  bool ampdu = act->ampdu;
-  bool end_warmup = act->end_warmup;
-  m_env->GetCompleted ();
+      auto act = m_env->ActionGetterCond ();
+      int cw_idx = act->cw;
+      bool rts_cts = act->rts_cts;
+      bool ampdu = act->ampdu;
+      end_warmup = act->end_warmup;
+      m_env->GetCompleted ();
+
+      SetNetworkConfiguration (cw_idx, rts_cts, ampdu);
+    }
+  else if (!useMabAgent && Simulator::Now ().GetSeconds () >= fuzzTime)
+    {
+      end_warmup = true;
+    }
+
   // End warmup period, define simulation stop time, and reset stats
   if (end_warmup && !simulationPhase)
     {
+      Simulator::ScheduleNow (&ResetMonitor);
       Simulator::Stop (Seconds (simulationTime));
-      Simulator::ScheduleNow (&GetWarmupFlows);
       simulationPhase = true;
+      warmupEndTime = Simulator::Now ().GetSeconds () - fuzzTime;
+      std::cout << "Warmup period finished after " << warmupEndTime << " s" << std::endl;
     }
 
-  SetNetworkConfiguration (cw_idx, rts_cts, ampdu);
+  csvLogOutput << agentName << "," << distance << "," << nWifi << "," << nWifiReal << "," << RngSeedManager::GetRun () << "," << end_warmup << ","
+  << fairnessIndex << "," << latencyPerPacket << "," << PLR << "," << throughput << "," << Simulator::Now().GetSeconds() - fuzzTime << std::endl;
 
-  Simulator::Schedule (Seconds(interactionTime), &ExecuteAction);
+  Simulator::Schedule (Seconds(interactionTime), &ExecuteAction, agentName, distance, nWifi);
 }
 
 void
@@ -504,34 +535,6 @@ SetNetworkConfiguration (int cw_idx, bool rts_cts, bool ampdu)
   uint64_t ampduSizeHigh = 6500631;
   UintegerValue ampduSize = (ampdu ? UintegerValue (ampduSizeHigh) : UintegerValue (ampduSizeLow));
   Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_MaxAmpduSize", ampduSize);
-}
-
-void
-GetWarmupFlows ()
-{
-  previousStats = monitor->GetFlowStats ();
-  for (auto &stat : monitor->GetFlowStats ())
-    {
-      warmupFlows.insert (std::pair<uint32_t, double> (stat.first, 8 * stat.second.rxBytes));
-      warmupLost += stat.second.lostPackets;
-      warmupRX += stat.second.rxPackets;
-      warmupTX += stat.second.txPackets;
-      warmupDelay += stat.second.delaySum;
-    }
-}
-
-void
-GetFuzzFlows ()
-{
-  previousStats = monitor->GetFlowStats ();
-
-  for (auto &stat : monitor->GetFlowStats ())
-    {
-      previousLost += stat.second.lostPackets;
-      previousRX += stat.second.rxPackets;
-      previousTX += stat.second.txPackets;
-      previousDelay += stat.second.delaySum;
-    }
 }
 
 void
