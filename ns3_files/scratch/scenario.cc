@@ -327,6 +327,7 @@ main (int argc, char *argv[])
   csvOutput << agentName << "," << dataRate << "," << distance << "," << nWifi << "," << nWifiReal << ","
             << RngSeedManager::GetRun () << "," << warmupEndTime << "," << fairnessIndex << ","
             << latencyPerPacketTotal << "," << totalPLR << "," << totalThr << std::endl;
+
   // Print results to std output
   std::cout << "agent,dataRate,distance,nWifi,nWifiReal,seed,warmupEnd,fairness,latency,plr,throughput"
             << std::endl

@@ -250,6 +250,7 @@ main(int argc, char* argv[])
   // Install FlowMonitor
   FlowMonitorHelper flowmon;
   monitor = flowmon.InstallAll ();
+  csvLogOutput << "agent,distance,nWifi,nWifiReal,seed,warmupEnd,fairness,latency,plr,throughput,time" << std::endl;
 
    // Generate PCAP at the sink
    if (!pcapName.empty ())
@@ -288,7 +289,6 @@ main(int argc, char* argv[])
   std::cout << "Results: " << std::endl;
 
   double lostPackets = 0;
-  double rxPackets = 0;
   double txPackets = 0;
   double latencySum = 0;
   double jainsIndexN = 0;
@@ -311,7 +311,6 @@ main(int argc, char* argv[])
       jainsIndexD += flow * flow;
 
       lostPackets += stat.second.lostPackets;
-      rxPackets += stat.second.rxPackets;
       txPackets += stat.second.txPackets;
       latencySum += stat.second.delaySum.GetSeconds ();
 
@@ -336,24 +335,31 @@ main(int argc, char* argv[])
             << "Total Latency: " << totalLatency << std::endl
             << "Latency per packet: " << latencyPerPacketTotal << std::endl
             << std::endl;
+
   // Gather results in CSV format
   std::ostringstream csvOutput;
   csvOutput << agentName << "," << distance << "," << nWifi << "," << nWifiReal << ","
             << RngSeedManager::GetRun () << "," << warmupEndTime << "," << fairnessIndex << ","
             << latencyPerPacketTotal << "," << totalPLR << "," << totalThr << std::endl;
+
   // Print results to std output
   std::cout << "agent,distance,nWifi,nWifiReal,seed,warmupEnd,fairness,latency,plr,throughput"
             << std::endl
             << csvOutput.str ();
+
   // Print results to file
   std::ofstream outputFile (csvPath);
   outputFile << csvOutput.str ();
   std::cout << std::endl << "Simulation data saved to: " << csvPath;
+
   std::ofstream outputLogFile (csvLogPath);
   outputLogFile << csvLogOutput.str ();
-  std::cout << std::endl << "Simulation log saved to: " << csvLogPath << std::endl << std::endl;
-  monitor->SerializeToXmlFile (flowmonPath, true, true);
-  std::cout << "Flow monitor data saved to: " << flowmonPath << std::endl;
+  std::cout << std::endl << "Simulation log saved to: " << csvLogPath << std::endl;
+
+  std::ofstream thrFile (flowmonPath);
+  thrFile << thrLogs.str ();
+  std::cout << "Throughput log saved to " << flowmonPath << std::endl << std::endl;
+
   // Cleanup
   Simulator::Destroy ();
   m_env->SetFinish ();
