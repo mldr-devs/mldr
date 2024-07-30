@@ -103,8 +103,9 @@ main(int argc, char* argv[])
   std::string agentName = "wifi";
   std::string pcapName = "";
   std::string csvPath = "results.csv";
-  std::string csvLogPath = "logs.csv";  // TODO
-  std::string flowmonPath = "thr.txt";
+  std::string csvLogPath = "logs.csv";
+  std::string flowmonPath = "flowmon.xml";
+  std::string thrPath = "thr.txt";
 
   int cw_idx = -1;
   bool rts_cts = false;
@@ -129,6 +130,7 @@ main(int argc, char* argv[])
   cmd.AddValue ("pcapName", "Name of a PCAP file generated from the AP", pcapName);
   cmd.AddValue ("rtsCts", "Enable RTS/CTS (only for wifi agent)", rts_cts);
   cmd.AddValue ("simulationTime", "Duration of simulation (s)", simulationTime);
+  cmd.AddValue ("thrPath", "Path to throughput log file", thrPath);
   cmd.Parse (argc, argv);
 
   // Print simulation settings to screen
@@ -347,7 +349,7 @@ main(int argc, char* argv[])
             << std::endl
             << csvOutput.str ();
 
-  // Print results to file
+  // Print results to files
   std::ofstream outputFile (csvPath);
   outputFile << csvOutput.str ();
   std::cout << std::endl << "Simulation data saved to: " << csvPath;
@@ -356,9 +358,12 @@ main(int argc, char* argv[])
   outputLogFile << csvLogOutput.str ();
   std::cout << std::endl << "Simulation log saved to: " << csvLogPath << std::endl;
 
-  std::ofstream thrFile (flowmonPath);
+  std::ofstream thrFile (thrPath);
   thrFile << thrLogs.str ();
-  std::cout << "Throughput log saved to " << flowmonPath << std::endl << std::endl;
+  std::cout << "Throughput log saved to " << flowmonPath << std::endl;
+
+  monitor->SerializeToXmlFile (flowmonPath, true, true);
+  std::cout << "Flow monitor data saved to: " << flowmonPath << std::endl << std::endl;
 
   // Cleanup
   Simulator::Destroy ();

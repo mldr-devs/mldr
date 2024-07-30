@@ -333,7 +333,7 @@ main (int argc, char *argv[])
             << std::endl
             << csvOutput.str ();
 
-  // Print results to file
+  // Print results to files
   std::ofstream outputFile (csvPath);
   outputFile << csvOutput.str ();
   std::cout << std::endl << "Simulation data saved to: " << csvPath;
