@@ -294,7 +294,6 @@ main(int argc, char* argv[])
   double jainsIndexN = 0;
   double jainsIndexD = 0;
   double nWifiReal = 0;
-  double simulationTime = 50;
 
   std::ostringstream thrLogs;
 
