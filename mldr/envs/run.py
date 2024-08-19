@@ -71,6 +71,7 @@ if __name__ == '__main__':
     args.add_argument('--packetSize', type=int, default=1500)
     args.add_argument('--rtsCts', action=argparse.BooleanOptionalAction, default=False)
     args.add_argument('--simulationTime', type=float, default=50.0)
+    args.add_argument('--thrPath', type=str, default='thr.txt')
 
     # reward weights
     args.add_argument('--massive', type=float, default=0.0)
@@ -90,7 +91,8 @@ if __name__ == '__main__':
     if args['scenario'] == 'scenario':
         del args['interPacketInterval']
         del args['mcs']
-        dataRate = args['dataRate']
+        del args['thrPath']
+        dataRate = min(115, args['dataRate'] * args['nWifi'])
     elif args['scenario'] == 'adhoc':
         del args['dataRate']
         del args['maxQueueSize']

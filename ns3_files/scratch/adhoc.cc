@@ -103,8 +103,9 @@ main(int argc, char* argv[])
   std::string agentName = "wifi";
   std::string pcapName = "";
   std::string csvPath = "results.csv";
-  std::string csvLogPath = "logs.csv";  // TODO
-  std::string flowmonPath = "thr.txt";
+  std::string csvLogPath = "logs.csv";
+  std::string flowmonPath = "flowmon.xml";
+  std::string thrPath = "thr.txt";
 
   int cw_idx = -1;
   bool rts_cts = false;
@@ -129,6 +130,7 @@ main(int argc, char* argv[])
   cmd.AddValue ("pcapName", "Name of a PCAP file generated from the AP", pcapName);
   cmd.AddValue ("rtsCts", "Enable RTS/CTS (only for wifi agent)", rts_cts);
   cmd.AddValue ("simulationTime", "Duration of simulation (s)", simulationTime);
+  cmd.AddValue ("thrPath", "Path to throughput log file", thrPath);
   cmd.Parse (argc, argv);
 
   // Print simulation settings to screen
@@ -250,6 +252,7 @@ main(int argc, char* argv[])
   // Install FlowMonitor
   FlowMonitorHelper flowmon;
   monitor = flowmon.InstallAll ();
+  csvLogOutput << "agent,distance,nWifi,nWifiReal,seed,warmupEnd,fairness,latency,plr,throughput,time" << std::endl;
 
    // Generate PCAP at the sink
    if (!pcapName.empty ())
@@ -288,7 +291,6 @@ main(int argc, char* argv[])
   std::cout << "Results: " << std::endl;
 
   double lostPackets = 0;
-  double rxPackets = 0;
   double txPackets = 0;
   double latencySum = 0;
   double jainsIndexN = 0;
@@ -310,7 +312,6 @@ main(int argc, char* argv[])
       jainsIndexD += flow * flow;
 
       lostPackets += stat.second.lostPackets;
-      rxPackets += stat.second.rxPackets;
       txPackets += stat.second.txPackets;
       latencySum += stat.second.delaySum.GetSeconds ();
 
@@ -335,24 +336,34 @@ main(int argc, char* argv[])
             << "Total Latency: " << totalLatency << std::endl
             << "Latency per packet: " << latencyPerPacketTotal << std::endl
             << std::endl;
+
   // Gather results in CSV format
   std::ostringstream csvOutput;
   csvOutput << agentName << "," << distance << "," << nWifi << "," << nWifiReal << ","
             << RngSeedManager::GetRun () << "," << warmupEndTime << "," << fairnessIndex << ","
             << latencyPerPacketTotal << "," << totalPLR << "," << totalThr << std::endl;
+
   // Print results to std output
   std::cout << "agent,distance,nWifi,nWifiReal,seed,warmupEnd,fairness,latency,plr,throughput"
             << std::endl
             << csvOutput.str ();
-  // Print results to file
+
+  // Print results to files
   std::ofstream outputFile (csvPath);
   outputFile << csvOutput.str ();
   std::cout << std::endl << "Simulation data saved to: " << csvPath;
+
   std::ofstream outputLogFile (csvLogPath);
   outputLogFile << csvLogOutput.str ();
-  std::cout << std::endl << "Simulation log saved to: " << csvLogPath << std::endl << std::endl;
+  std::cout << std::endl << "Simulation log saved to: " << csvLogPath << std::endl;
+
+  std::ofstream thrFile (thrPath);
+  thrFile << thrLogs.str ();
+  std::cout << "Throughput log saved to " << flowmonPath << std::endl;
+
   monitor->SerializeToXmlFile (flowmonPath, true, true);
-  std::cout << "Flow monitor data saved to: " << flowmonPath << std::endl;
+  std::cout << "Flow monitor data saved to: " << flowmonPath << std::endl << std::endl;
+
   // Cleanup
   Simulator::Destroy ();
   m_env->SetFinish ();

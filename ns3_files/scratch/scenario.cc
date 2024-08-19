@@ -327,12 +327,13 @@ main (int argc, char *argv[])
   csvOutput << agentName << "," << dataRate << "," << distance << "," << nWifi << "," << nWifiReal << ","
             << RngSeedManager::GetRun () << "," << warmupEndTime << "," << fairnessIndex << ","
             << latencyPerPacketTotal << "," << totalPLR << "," << totalThr << std::endl;
+
   // Print results to std output
   std::cout << "agent,dataRate,distance,nWifi,nWifiReal,seed,warmupEnd,fairness,latency,plr,throughput"
             << std::endl
             << csvOutput.str ();
 
-  // Print results to file
+  // Print results to files
   std::ofstream outputFile (csvPath);
   outputFile << csvOutput.str ();
   std::cout << std::endl << "Simulation data saved to: " << csvPath;
