@@ -359,7 +359,7 @@ main(int argc, char* argv[])
 
   std::ofstream thrFile (thrPath);
   thrFile << thrLogs.str ();
-  std::cout << "Throughput log saved to " << flowmonPath << std::endl;
+  std::cout << "Throughput log saved to " << thrPath << std::endl;
 
   monitor->SerializeToXmlFile (flowmonPath, true, true);
   std::cout << "Flow monitor data saved to: " << flowmonPath << std::endl << std::endl;
