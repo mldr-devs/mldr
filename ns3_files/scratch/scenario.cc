@@ -545,7 +545,8 @@ SetNetworkConfiguration (int cw_idx, bool rts_cts, bool ampdu)
   if (cw_idx >= 0)
     {
       // Set CW
-      AttributeContainerValue<UintegerValue> cwValue (std::vector {UintegerValue (pow (2, 4 + cw_idx))});
+      std::vector<UintegerValue> cwValues = {UintegerValue (pow (2, 4 + cw_idx))};
+      AttributeContainerValue<UintegerValue> cwValue (cwValues);
       Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_Txop/MinCws", cwValue);
       Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_Txop/MaxCws", cwValue);
     }

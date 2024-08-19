@@ -24,7 +24,6 @@ N_AMPDU = 2
 
 ACTION_HISTORY_LEN = 20
 ACTION_PROB_THRESHOLD = 0.9
-LATENCY_THRESHOLD = 0.01
 
 AGENT_ARGS = {
     'EGreedy': {
@@ -119,7 +118,7 @@ if __name__ == '__main__':
     def normalize_rewards(env):
         fairness = 1 + 10 * (env.fairness - 1)
         throughput = env.throughput / dataRate
-        latency = 1 - env.latency / LATENCY_THRESHOLD
+        latency = min(1, max(0, 1 - 10 * env.latency))
 
         rewards = np.asarray([fairness, throughput, latency])
         return np.dot(reward_probs, rewards)
