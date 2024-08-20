@@ -323,7 +323,7 @@ main(int argc, char* argv[])
     }
 
   double totalThr = jainsIndexN;
-  double fairnessIndex = jainsIndexN * jainsIndexN / (nWifiReal * jainsIndexD);
+  double fairnessIndex = jainsIndexN * jainsIndexN / (nWifi * jainsIndexD);
   double totalPLR = lostPackets / txPackets;
   double totalLatency = latencySum;
   double latencyPerPacketTotal = totalLatency / txPackets;
@@ -472,7 +472,7 @@ ExecuteAction (std::string agentName, double distance, uint32_t nWifi)
   double txPackets =  currentTX - previousTX;
   double latencyPerPacket = latency.GetSeconds() / rxPackets;
   double PLR = lostPackets/txPackets;
-  double fairnessIndex = jainsIndexNTemp * jainsIndexNTemp / (nWifiReal * jainsIndexDTemp);
+  double fairnessIndex = jainsIndexNTemp * jainsIndexNTemp / (nWifi * jainsIndexDTemp);
   double throughput = jainsIndexNTemp;
 
   previousDelay = currentDelay;
