@@ -8,7 +8,7 @@ import jax
 import numpy as np
 from py_interface import *
 from reinforced_lib import RLib
-from reinforced_lib.agents.mab import *
+from reinforced_lib.agents.mab import Softmax
 from reinforced_lib.exts import BasicMab
 from reinforced_lib.logs import *
 
@@ -25,22 +25,6 @@ N_AMPDU = 2
 ACTION_HISTORY_LEN = 20
 ACTION_PROB_THRESHOLD = 0.9
 
-AGENT_ARGS = {
-    'EGreedy': {
-        'e': 0.05,
-        'optimistic_start': 1.0
-    },
-    'UCB': {
-        'c': 0.01
-    },
-    'NormalThompsonSampling': {
-        'alpha': 1.0,
-        'beta': 1.0,
-        'mu': 1.0,
-        'lam': 0.0,
-    }
-}
-
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser()
@@ -52,7 +36,7 @@ if __name__ == '__main__':
     args.add_argument('--scenario', type=str, default='scenario')
 
     # ns-3 args
-    args.add_argument('--agentName', type=str, default='UCB')
+    args.add_argument('--agentName', type=str, default='MLDR')
     args.add_argument('--ampdu', action=argparse.BooleanOptionalAction, default=True)
     args.add_argument('--channelWidth', type=int, default=20)
     args.add_argument('--csvLogPath', type=str, default='logs.csv')
@@ -154,12 +138,13 @@ if __name__ == '__main__':
     # set up the agent
     if agent == 'wifi':
         rlib = None
-    elif agent not in AGENT_ARGS:
-        raise ValueError('Invalid agent type')
-    else:
+    elif agent == 'MLDR':
         rlib = RLib(
-            agent_type=globals()[agent],
-            agent_params=AGENT_ARGS[agent],
+            agent_type=Softmax,
+            agent_params={
+                'lr': 1.0,
+                'alpha': 0.3
+            },
             ext_type=BasicMab,
             ext_params={'n_arms': N_CW * N_RTS_CTS * N_AMPDU},
             logger_types=CsvLogger,
@@ -167,6 +152,8 @@ if __name__ == '__main__':
             logger_sources=('reward', SourceType.METRIC)
         )
         rlib.init(seed)
+    else:
+        raise ValueError('Invalid agent type')
 
     # set up the environment
     exp = Experiment(mempool_key, MEM_SIZE, scenario, ns3_path, using_waf=False)
