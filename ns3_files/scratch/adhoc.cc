@@ -252,7 +252,6 @@ main(int argc, char* argv[])
   // Install FlowMonitor
   FlowMonitorHelper flowmon;
   monitor = flowmon.InstallAll ();
-  csvLogOutput << "agent,distance,nWifi,nWifiReal,seed,warmupEnd,fairness,latency,plr,throughput,time" << std::endl;
 
    // Generate PCAP at the sink
    if (!pcapName.empty ())
@@ -339,7 +338,7 @@ main(int argc, char* argv[])
 
   // Gather results in CSV format
   std::ostringstream csvOutput;
-  csvOutput << agentName << "," << distance << "," << nWifi << "," << nWifiReal << ","
+  csvOutput << agentName << ",," << distance << "," << nWifi << "," << nWifiReal << ","
             << RngSeedManager::GetRun () << "," << warmupEndTime << "," << fairnessIndex << ","
             << latencyPerPacketTotal << "," << totalPLR << "," << totalThr << std::endl;
 
@@ -517,7 +516,7 @@ ExecuteAction (std::string agentName, double distance, uint32_t nWifi)
       std::cout << "Warmup period finished after " << warmupEndTime << " s" << std::endl;
     }
 
-  csvLogOutput << agentName << "," << distance << "," << nWifi << "," << nWifiReal << "," << RngSeedManager::GetRun () << "," << end_warmup << ","
+  csvLogOutput << agentName << ",," << distance << "," << nWifi << "," << nWifiReal << "," << RngSeedManager::GetRun () << "," << end_warmup << ","
   << fairnessIndex << "," << latencyPerPacket << "," << PLR << "," << throughput << "," << Simulator::Now().GetSeconds() - fuzzTime << std::endl;
 
   Simulator::Schedule (Seconds(interactionTime), &ExecuteAction, agentName, distance, nWifi);

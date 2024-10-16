@@ -239,7 +239,6 @@ main (int argc, char *argv[])
   // Install FlowMonitor
   FlowMonitorHelper flowmon;
   monitor = flowmon.InstallAll ();
-  csvLogOutput << "agent,dataRate,distance,nWifi,nWifiReal,seed,warmupEnd,fairness,latency,plr,throughput,time" << std::endl;
 
   // Generate PCAP at AP
   if (!pcapName.empty ())
