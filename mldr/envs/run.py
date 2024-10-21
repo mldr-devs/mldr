@@ -4,12 +4,10 @@ os.environ['JAX_ENABLE_X64'] = 'True'
 import argparse
 from collections import deque
 
-import jax
 import numpy as np
 from py_interface import *
 from reinforced_lib import RLib
-from reinforced_lib.agents.mab import Softmax
-from reinforced_lib.exts import BasicMab
+from reinforced_lib.agents.mab import ThompsonSampling
 from reinforced_lib.logs import *
 
 from mldr.envs.ns3_ai_structures import Env, Act
@@ -24,6 +22,10 @@ N_AMPDU = 2
 
 ACTION_HISTORY_LEN = 20
 ACTION_PROB_THRESHOLD = 0.9
+FAIRNESS_SCALE = 10.0
+THROUGHPUT_SCALE = 1.0
+LATENCY_SCALE = 3.0
+REWARD_SCALE = 3.0
 
 
 if __name__ == '__main__':
@@ -62,7 +64,7 @@ if __name__ == '__main__':
     args.add_argument('--urllc', type=float, default=0.0)
 
     # agent settings
-    args.add_argument('--maxWarmup', type=int, default=50.0)
+    args.add_argument('--maxWarmup', type=int, default=100.0)
     args.add_argument('--useWarmup', action=argparse.BooleanOptionalAction, default=False)
 
     args = args.parse_args()
@@ -86,12 +88,10 @@ if __name__ == '__main__':
     if not ns3_path:
         raise ValueError('ns-3 path not found')
 
-    seed = args.pop('seed')
-    key = jax.random.PRNGKey(seed)
-
     agent = args['agentName']
     mempool_key = args.pop('mempoolKey')
     scenario = args.pop('scenario')
+    seed = args.pop('seed')
 
     ns3_args = args
     ns3_args['RngRun'] = seed
@@ -100,12 +100,15 @@ if __name__ == '__main__':
     reward_probs = np.asarray([args.pop('massive'), args.pop('throughput'), args.pop('urllc')])
 
     def normalize_rewards(env):
-        fairness = 1 + 10 * (env.fairness - 1)
-        throughput = env.throughput / dataRate
-        latency = min(1, max(0, 1 - 10 * env.latency))
+        fairness = 1 + FAIRNESS_SCALE * (env.fairness - 1)
+        throughput = THROUGHPUT_SCALE * env.throughput / dataRate
+        latency = 1e-3 * LATENCY_SCALE / env.latency
 
         rewards = np.asarray([fairness, throughput, latency])
-        return np.dot(reward_probs, rewards)
+        rewards = np.clip(rewards, 0, 1)
+        rewards = REWARD_SCALE * np.dot(reward_probs, rewards)
+
+        return rewards, REWARD_SCALE - rewards
 
     # set up the warmup function
     max_warmup = args.pop('maxWarmup')
@@ -138,20 +141,18 @@ if __name__ == '__main__':
     # set up the agent
     if agent == 'wifi':
         rlib = None
+        context = None
     elif agent == 'MLDR':
         rlib = RLib(
-            agent_type=Softmax,
-            agent_params={
-                'lr': 1.0,
-                'alpha': 0.3
-            },
-            ext_type=BasicMab,
-            ext_params={'n_arms': N_CW * N_RTS_CTS * N_AMPDU},
-            logger_types=CsvLogger,
-            logger_params={'csv_path': f'rlib_{args["csvPath"]}'},
-            logger_sources=('reward', SourceType.METRIC)
+            agent_type=ThompsonSampling,
+            agent_params={'n_arms': N_CW * N_RTS_CTS * N_AMPDU},
+            no_ext_mode=True,
+            logger_types=PlotsLogger,
+            logger_params={'plots_dir': '.'},
+            logger_sources='n_successful'
         )
         rlib.init(seed)
+        context = np.ones(N_CW * N_RTS_CTS * N_AMPDU)
     else:
         raise ValueError('Invalid agent type')
 
@@ -162,16 +163,18 @@ if __name__ == '__main__':
     try:
         # run the experiment
         ns3_process = exp.run(setting=ns3_args, show_output=True)
+        action = None
 
         while not var.isFinish():
             with var as data:
                 if data is None:
                     break
 
-                key, subkey = jax.random.split(key)
-                reward = normalize_rewards(data.env)
-
-                action = rlib.sample(reward)
+                n_successful, n_failed = normalize_rewards(data.env)
+                action = rlib.sample(
+                    sample_observations={'context': context},
+                    update_observations={'action': action, 'n_successful': n_successful, 'n_failed': n_failed, 'delta_time': ns3_args['interactionTime']}
+                )
                 cw, rts_cts, ampdu = np.unravel_index(action, (N_CW, N_RTS_CTS, N_AMPDU))
 
                 rlib.log('cw', cw)

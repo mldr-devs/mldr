@@ -23,7 +23,7 @@ dependencies = [
   "matplotlib~=3.9.2",
   "optuna~=3.6.1",
   "pandas~=2.2.2",
-  "reinforced-lib==1.1.2",
+  "reinforced-lib==1.1.3",
   "tensorflow-probability[jax]~=0.24.0",
   "tqdm~=4.66.5"
 ]
