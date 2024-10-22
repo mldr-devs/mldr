@@ -2,7 +2,7 @@
 
 SEEDS=(100 101 102 103 104 105 106 107 108 109)
 N_WIFIS=(1 4 8 12 16 20)
-DATA_RATE=110
+DATA_RATE=120
 
 for n in "${N_WIFIS[@]}"; do
   for seed in "${SEEDS[@]}"; do

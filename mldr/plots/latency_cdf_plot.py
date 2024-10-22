@@ -5,14 +5,7 @@ from xml.etree import ElementTree
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mldr.plots.config import get_cmap
-
-
-AGENT_NAMES = {
-    '80211': '802.11',
-    '80211_RTS': '802.11 RTS/CTS',
-    'MLDR': 'MLDR'
-}
+from mldr.plots.config import get_cmap, AGENT_NAMES
 
 
 if __name__ == '__main__':
@@ -42,6 +35,9 @@ if __name__ == '__main__':
     for i, (agent, results) in enumerate(sorted(agent_results.items())):
         xs, ys = list(results.keys()), list(results.values())
         xs, ys = np.array(xs), np.array(ys)
+        idx = np.argsort(xs)
+        xs, ys = xs[idx], ys[idx]
+        xs, ys = np.concatenate(([0], xs)), np.concatenate(([0], ys))
         latency = ys.cumsum() / ys.sum()
         plt.plot(xs, latency, label=agent, color=cmap[i], linewidth=1)
 

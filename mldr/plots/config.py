@@ -26,8 +26,9 @@ PLOT_PARAMS = {
 
 
 AGENT_NAMES = {
-    'EGreedy': r'$\varepsilon$-greedy',
-    'NormalThompsonSampling': 'Normal TS'
+    '80211': '802.11',
+    '80211_RTS': '802.11 RTS/CTS',
+    'MLDR': 'MLDR'
 }
 
 

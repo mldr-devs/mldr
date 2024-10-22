@@ -2,41 +2,40 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from mldr.plots.config import get_cmap
+from mldr.plots.config import get_cmap, AGENT_NAMES
 
 
 if __name__ == '__main__':
-    df = pd.read_csv('all_logs.csv')
+    df = pd.read_csv('../../scripts/train_test_logs.csv')
     agents = df['agent'].unique()
-    cmap = get_cmap(n=len(agents))
+    cmap = get_cmap(n=len(AGENT_NAMES))[::-1]
+    df['latency'] = df['latency'] * 1000
 
-    time_min, time_max = float('inf'), float('-inf')
+    idx_min, idx_max = float('inf'), float('-inf')
+
+    for agent in agents:
+        agent_df = df[df['agent'] == agent]
+        idx_min = min(idx_min, len(agent_df))
+        idx_max = max(idx_max, len(agent_df))
+
+    plt.axvline(x=idx_max - idx_min, color='gray', linestyle='--', label='Warmup end')
+    xs = np.arange(idx_max)
 
     for i, (agent, color) in enumerate(zip(agents, cmap)):
         agent_df = df[df['agent'] == agent]
-        warmupEndIdx = agent_df['warmupEnd'].argmax()
-        warmupEndTime = agent_df['time'].iloc[warmupEndIdx]
+        plt.plot(xs[idx_max - len(agent_df):], agent_df['latency'], label=AGENT_NAMES[agent], color=color)
 
-        time = agent_df['time'] - warmupEndTime
-        time_min = min(time_min, time.min())
-        time_max = max(time_max, time.max())
-
-        if i == 0:
-            plt.axvline(x=0, color='gray', linestyle='--', label='Warmup end')
-
-        plt.plot(time, agent_df['throughput'], label=agent, color=color)
-
-    plt.xticks(range(int(10 * np.floor(time_min / 10)), int(10 * np.ceil(time_max / 10)) + 1, 10))
+    plt.xticks(range(0, int(5 * np.ceil(idx_max / 5)), 50))
     xticks = plt.xticks()
-    plt.axvline(x=time_max + 2, color='gray')
+    plt.axvline(x=idx_max, color='gray')
 
     for i, (agent, color) in enumerate(zip(agents, cmap)):
         agent_thr = df[df['agent'] == agent]
         agent_thr = agent_thr[agent_thr['warmupEnd'] == 1]
-        agent_thr = agent_thr['throughput']
+        agent_thr = agent_thr['latency'].values
 
         plt.boxplot(
-            agent_thr, positions=[time_max + 3.5 + 1.5 * i], widths=1., patch_artist=True, showfliers=False, showmeans=True,
+            agent_thr, positions=[idx_max + 7 + 8 * i], widths=2., patch_artist=True, showfliers=False, showmeans=True,
             boxprops=dict(facecolor=color, linewidth=0.5, edgecolor='gray'),
             whiskerprops=dict(color='gray', linewidth=0.5),
             capprops=dict(color='gray', linewidth=0.5),
@@ -44,15 +43,14 @@ if __name__ == '__main__':
             meanprops=dict(marker='o', markerfacecolor='white', markeredgecolor='gray', markersize=2, markeredgewidth=0.5)
         )
 
-    plt.xlabel('Time [s]')
-    plt.ylabel('Throughput [Mb/s]')
-    plt.xlim(time_min, time_max + (time_max - time_min) * 0.17)
-    plt.ylim(0, 120)
-    plt.yticks(range(0, 121, 30))
+    plt.xlabel('Step')
+    plt.ylabel('Latency [ms]')
+    plt.xlim(0, 370)
+    plt.yscale('log')
     plt.xticks(*xticks)
 
     plt.legend(ncol=2)
     plt.grid()
     plt.tight_layout()
-    plt.savefig('train_test_plot.pdf', bbox_inches='tight')
+    plt.savefig('latency_train-test.pdf', bbox_inches='tight')
     plt.show()
