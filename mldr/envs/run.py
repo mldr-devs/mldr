@@ -35,7 +35,7 @@ if __name__ == '__main__':
     args.add_argument('--seed', type=int, default=100)
     args.add_argument('--mempoolKey', type=int, default=1234)
     args.add_argument('--ns3Path', type=str, default='')
-    args.add_argument('--scenario', type=str, default='scenario')
+    args.add_argument('--scenario', type=str, default='scenario_dynamic')
 
     # ns-3 args
     args.add_argument('--agentName', type=str, default='MLDR')
@@ -57,6 +57,9 @@ if __name__ == '__main__':
     args.add_argument('--rtsCts', action=argparse.BooleanOptionalAction, default=False)
     args.add_argument('--simulationTime', type=float, default=50.0)
     args.add_argument('--thrPath', type=str, default='thr.txt')
+    args.add_argument('--minWifi', type=int, default=5)
+    args.add_argument('--intervalSta', type=int, default=2)
+    args.add_argument('--intervalTime', type=float, default=10.0)
 
     # reward weights
     args.add_argument('--massive', type=float, default=0.0)
@@ -77,16 +80,25 @@ if __name__ == '__main__':
         del args['interPacketInterval']
         del args['mcs']
         del args['thrPath']
+        del args['minWifi']
+        del args['intervalSta']
+        del args['intervalTime']
         dataRate = min(115, args['dataRate'] * args['nWifi'])
     elif args['scenario'] == 'adhoc':
         del args['dataRate']
         del args['maxQueueSize']
         dataRate = (args['packetSize'] * args['nWifi'] / args['interPacketInterval']) / 1e6
+    elif args['scenario'] == 'scenario_dynamic':
+        del args['interPacketInterval']
+        del args['mcs']
+        del args['thrPath']
+        dataRate = min(115, args['dataRate'] * args['nWifi'])
 
-    if os.environ.get('NS3_DIR'):
-        ns3_path = os.environ['NS3_DIR']
-    if not ns3_path:
-        raise ValueError('ns-3 path not found')
+    # if os.environ.get('NS3_DIR'):
+    #     ns3_path = os.environ['NS3_DIR']
+    # if not ns3_path:
+    #     raise ValueError('ns-3 path not found')
+    ns3_path = "/home/student/ns-allinone-3.42/ns-3.42"
 
     agent = args['agentName']
     mempool_key = args.pop('mempoolKey')
