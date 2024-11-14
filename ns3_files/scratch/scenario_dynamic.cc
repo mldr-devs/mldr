@@ -32,6 +32,7 @@ struct sEnv
   double plr;
   double throughput;
   double time;
+  bool reset_agent;
 } Packed;
 
 struct sAct
@@ -48,11 +49,11 @@ Ns3AIRL<sEnv, sAct> * m_env = new Ns3AIRL<sEnv, sAct> (DEFAULT_MEMBLOCK_KEY);
 
 void ResetMonitor ();
 void InstallTrafficGenerator (Ptr<ns3::Node> fromNode, Ptr<ns3::Node> toNode, uint32_t port,
-                              DataRate offeredLoad, uint32_t packetSize);
+                              DataRate offeredLoad, uint32_t packetSize, bool useFuzz);
 void PopulateARPcache ();
-void ExecuteAction (std::string agentName, double dataRate, double distance, uint32_t nWifi);
+void ExecuteAction (std::string agentName, double dataRate, double distance);
 void SetNetworkConfiguration (int cw_idx, bool rts_cts, bool ampdu);
-void TurnOnSta (uint32_t minNumberSta, uint32_t maxNumberSta, uint32_t intervalSta, double intervalTime, uint32_t port, DataRate offeredLoad, uint32_t packetSize, NodeContainer wifiStaNodes,NodeContainer wifiApNode);
+void TurnOnSta (DataRate offeredLoad, uint32_t packetSize, NodeContainer wifiStaNodes, NodeContainer wifiApNode);
 
 /***** Global variables and constants *****/
 
@@ -60,13 +61,18 @@ double fuzzTime = 5.;
 double simulationTime = 50.;
 double interactionTime = 0.5;
 double warmupEndTime = 0.;
+double intervalTime = 10;
 bool simulationPhase = false;
 bool useMabAgent = false;
+bool resetAgent = false;
 
 double previousRX = 0;
 double previousTX = 0;
 double previousLost = 0;
-uint32_t ACTIVE_STA = 0;
+uint32_t nWifi = 10;
+uint32_t activeSta = 0;
+uint32_t intervalSta = 1;
+uint32_t portNumber = 9;
 
 Time previousDelay = Seconds(0);
 
@@ -81,15 +87,12 @@ int
 main (int argc, char *argv[])
 {
   // Initialize default simulation parameters
-  uint32_t nWifi = 10;
+  uint32_t minWifi = 10;
   uint32_t maxQueueSize = 100;
   uint32_t packetSize = 1500;
   uint32_t dataRate = 110;
   uint32_t channelWidth = 20;
   double distance = 10.;
-  uint32_t minWifi = 10;
-  uint32_t intervalSta = 1;
-  double intervalTime = 10;
 
   std::string agentName = "wifi";
   std::string pcapName = "";
@@ -114,15 +117,15 @@ main (int argc, char *argv[])
   cmd.AddValue ("flowmonPath", "Path to output flow monitor XML file", flowmonPath);
   cmd.AddValue ("fuzzTime", "Maximum fuzz value (s)", fuzzTime);
   cmd.AddValue ("interactionTime", "Time between agent actions (s)", interactionTime);
+  cmd.AddValue ("intervalSta", "Number of stations to turn on at each interval", intervalSta);
+  cmd.AddValue ("intervalTime", "Duration of interval between turning on stations (s)", intervalTime);
   cmd.AddValue ("maxQueueSize", "Max queue size (packets)", maxQueueSize);
-  cmd.AddValue ("nWifi", "Number of max stations", nWifi);
+  cmd.AddValue ("minWifi", "Min number of stations", minWifi);
+  cmd.AddValue ("nWifi", "Max number of stations", nWifi);
   cmd.AddValue ("packetSize", "Packets size (B)", packetSize);
   cmd.AddValue ("pcapName", "Name of a PCAP file generated from the AP", pcapName);
   cmd.AddValue ("rtsCts", "Enable RTS/CTS (only for wifi agent)", rts_cts);
   cmd.AddValue ("simulationTime", "Duration of simulation (s)", simulationTime);
-  cmd.AddValue ("minWifi", "Duration of simulation (s)", minWifi);
-  cmd.AddValue ("intervalSta", "Duration of simulation (s)", intervalSta);
-  cmd.AddValue ("intervalTime", "Duration of simulation (s)", intervalTime);
   cmd.Parse (argc, argv);
 
   // Print simulation settings to screen
@@ -134,7 +137,10 @@ main (int argc, char *argv[])
             << "- channel width: " << channelWidth << " Mhz" << std::endl
             << "- packets size: " << packetSize << " B" << std::endl
             << "- max queue size: " << maxQueueSize << " packets" << std::endl
-            << "- number of stations: " << nWifi << std::endl
+            << "- min number of stations: " << minWifi << std::endl
+            << "- max number of stations: " << nWifi << std::endl
+            << "- number of stations to turn on at each interval: " << intervalSta << std::endl
+            << "- interval between turning on stations: " << intervalTime << " s" << std::endl
             << "- max distance between AP and STAs: " << distance << " m" << std::endl
             << "- simulation time: " << simulationTime << " s" << std::endl
             << "- max fuzz time: " << fuzzTime << " s" << std::endl
@@ -237,14 +243,15 @@ main (int argc, char *argv[])
 
   // Configure applications
   DataRate applicationDataRate = DataRate (dataRate * 1e6);
-  uint32_t portNumber = 9;
 
   for (uint32_t j = 0; j < minWifi; ++j)
     {
-      InstallTrafficGenerator (wifiStaNodes.Get (j), wifiApNode.Get (0), portNumber++,
-                               applicationDataRate, packetSize);
+      InstallTrafficGenerator (wifiStaNodes.Get (j), wifiApNode.Get (0), portNumber++, applicationDataRate, packetSize, true);
     }
-  Simulator::Schedule (Seconds(intervalTime), &TurnOnSta, minWifi, nWifi, intervalSta, intervalTime, portNumber, applicationDataRate, packetSize, wifiStaNodes, wifiApNode);
+
+  activeSta = minWifi;
+  Simulator::Schedule (Seconds(fuzzTime + intervalTime), &TurnOnSta, applicationDataRate, packetSize, wifiStaNodes, wifiApNode);
+
   // Install FlowMonitor
   FlowMonitorHelper flowmon;
   monitor = flowmon.InstallAll ();
@@ -264,12 +271,12 @@ main (int argc, char *argv[])
 
   m_env->SetCond (2, 0);
   Simulator::Schedule (Seconds (fuzzTime), &ResetMonitor);
-  Simulator::Schedule (Seconds (fuzzTime), &ExecuteAction, agentName, dataRate, distance, nWifi);
-  
+  Simulator::Schedule (Seconds (fuzzTime), &ExecuteAction, agentName, dataRate, distance);
+
   // Record start time
   std::cout << "Starting simulation..." << std::endl;
   auto start = std::chrono::high_resolution_clock::now ();
-  
+
   // Run the simulation!
   Simulator::Run ();
 
@@ -376,7 +383,7 @@ ResetMonitor ()
 
 void
 InstallTrafficGenerator (Ptr<ns3::Node> fromNode, Ptr<ns3::Node> toNode, uint32_t port,
-                         DataRate offeredLoad, uint32_t packetSize)
+                         DataRate offeredLoad, uint32_t packetSize, bool useFuzz)
 {
   // Get sink address
   Ptr<Ipv4> ipv4 = toNode->GetObject<Ipv4> ();
@@ -391,6 +398,11 @@ InstallTrafficGenerator (Ptr<ns3::Node> fromNode, Ptr<ns3::Node> toNode, uint32_
   fuzz->SetAttribute ("Max", DoubleValue (fuzzTime));
   fuzz->SetStream (0);
   double applicationsStart = fuzz->GetValue ();
+
+  if (!useFuzz)
+    {
+      applicationsStart = 0.;
+    }
 
   // Configure source and sink
   InetSocketAddress sinkSocket (addr, port);
@@ -460,7 +472,7 @@ PopulateARPcache ()
 }
 
 void
-ExecuteAction (std::string agentName, double dataRate, double distance, uint32_t nWifi)
+ExecuteAction (std::string agentName, double dataRate, double distance)
 {
   double nWifiReal = 0;
   double jainsIndexNTemp = 0.;
@@ -473,7 +485,7 @@ ExecuteAction (std::string agentName, double dataRate, double distance, uint32_t
 
   monitor->CheckForLostPackets ();
   std::map<FlowId, FlowMonitor::FlowStats> stats = monitor->GetFlowStats ();
-  std::cout << "JAKIS TAM FLOW" << std::endl;
+
   for (auto &stat : stats)
     {
       double flow = 8 * ( stat.second.rxBytes - previousStats[stat.first].rxBytes) / (1e6 * interactionTime);
@@ -481,7 +493,6 @@ ExecuteAction (std::string agentName, double dataRate, double distance, uint32_t
       currentRX += stat.second.rxPackets;
       currentTX += stat.second.txPackets;
       currentDelay += stat.second.delaySum;
-      std::cout << flow << " MB/s" << std::endl;
       if (flow > 0)
         {
           nWifiReal += 1;
@@ -497,7 +508,7 @@ ExecuteAction (std::string agentName, double dataRate, double distance, uint32_t
   double txPackets =  currentTX - previousTX;
   double latencyPerPacket = latency.GetSeconds() / rxPackets;
   double PLR = lostPackets/txPackets;
-  double fairnessIndex = jainsIndexNTemp * jainsIndexNTemp / (ACTIVE_STA * jainsIndexDTemp);
+  double fairnessIndex = jainsIndexNTemp * jainsIndexNTemp / (activeSta * jainsIndexDTemp);
   double throughput = jainsIndexNTemp;
 
   previousDelay = currentDelay;
@@ -516,7 +527,9 @@ ExecuteAction (std::string agentName, double dataRate, double distance, uint32_t
       env->plr = PLR;
       env->throughput = throughput;
       env->time = Simulator::Now ().GetSeconds () - fuzzTime;
+      env->reset_agent = resetAgent;
       m_env->SetCompleted ();
+      resetAgent = false;
 
       auto act = m_env->ActionGetterCond ();
       int cw_idx = act->cw;
@@ -542,10 +555,11 @@ ExecuteAction (std::string agentName, double dataRate, double distance, uint32_t
       std::cout << "Warmup period finished after " << warmupEndTime << " s" << std::endl;
     }
 
-  csvLogOutput << agentName << "," << dataRate << "," << distance << "," << ACTIVE_STA << "," << nWifiReal << "," << RngSeedManager::GetRun () << "," << end_warmup << ","
-  << fairnessIndex << "," << latencyPerPacket << "," << PLR << "," << throughput << "," << Simulator::Now().GetSeconds() - fuzzTime << std::endl;
+  csvLogOutput << agentName << "," << dataRate << "," << distance << "," << activeSta << "," << nWifiReal << ","
+               << RngSeedManager::GetRun () << "," << end_warmup << "," << fairnessIndex << "," << latencyPerPacket
+               << "," << PLR << "," << throughput << "," << Simulator::Now().GetSeconds() - fuzzTime << std::endl;
 
-  Simulator::Schedule (Seconds(interactionTime), &ExecuteAction, agentName, dataRate, distance, ACTIVE_STA);
+  Simulator::Schedule (Seconds(interactionTime), &ExecuteAction, agentName, dataRate, distance);
 }
 
 void
@@ -573,15 +587,20 @@ SetNetworkConfiguration (int cw_idx, bool rts_cts, bool ampdu)
   Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/BE_MaxAmpduSize", ampduSize);
 }
 
-void TurnOnSta (uint32_t minNumberSta, uint32_t maxNumberSta, uint32_t intervalSta, double intervalTime, uint32_t port, DataRate offeredLoad, uint32_t packetSize, NodeContainer wifiStaNodes,NodeContainer wifiApNode) {
-  for (uint32_t j = minNumberSta; j < minNumberSta+intervalSta; ++j)
-  {
-    InstallTrafficGenerator (wifiStaNodes.Get (j), wifiApNode.Get (0), port++,
-                              offeredLoad, packetSize);
-  }
-  minNumberSta = minNumberSta + intervalSta;
-  ACTIVE_STA = minNumberSta;
-  if ((minNumberSta+intervalSta <= maxNumberSta)) {
-    Simulator::Schedule (Seconds(intervalTime), &TurnOnSta, minNumberSta, maxNumberSta, intervalSta, intervalTime, port, offeredLoad, packetSize, wifiStaNodes, wifiApNode);
-  }
+void
+TurnOnSta (DataRate offeredLoad, uint32_t packetSize, NodeContainer wifiStaNodes, NodeContainer wifiApNode)
+{
+  for (uint32_t i = activeSta; i < std::min(nWifi, activeSta + intervalSta); ++i)
+    {
+      InstallTrafficGenerator (wifiStaNodes.Get (i), wifiApNode.Get (0), portNumber++, offeredLoad, packetSize, false);
+    }
+
+  activeSta += intervalSta;
+  activeSta = std::min(nWifi, activeSta);
+  resetAgent = true;
+
+  if (activeSta < nWifi)
+    {
+      Simulator::Schedule (Seconds(intervalTime), &TurnOnSta, offeredLoad, packetSize, wifiStaNodes, wifiApNode);
+    }
 }

@@ -50,16 +50,16 @@ if __name__ == '__main__':
     args.add_argument('--fuzzTime', type=float, default=5.0)
     args.add_argument('--interactionTime', type=float, default=0.5)
     args.add_argument('--interPacketInterval', type=float, default=0.5)
+    args.add_argument('--intervalSta', type=int, default=2)
+    args.add_argument('--intervalTime', type=float, default=10.0)
     args.add_argument('--maxQueueSize', type=int, default=100)
     args.add_argument('--mcs', type=int, default=0)
+    args.add_argument('--minWifi', type=int, default=5)
     args.add_argument('--nWifi', type=int, default=10)
     args.add_argument('--packetSize', type=int, default=1500)
     args.add_argument('--rtsCts', action=argparse.BooleanOptionalAction, default=False)
     args.add_argument('--simulationTime', type=float, default=50.0)
     args.add_argument('--thrPath', type=str, default='thr.txt')
-    args.add_argument('--minWifi', type=int, default=5)
-    args.add_argument('--intervalSta', type=int, default=2)
-    args.add_argument('--intervalTime', type=float, default=10.0)
 
     # reward weights
     args.add_argument('--massive', type=float, default=0.0)
@@ -87,6 +87,9 @@ if __name__ == '__main__':
     elif args['scenario'] == 'adhoc':
         del args['dataRate']
         del args['maxQueueSize']
+        del args['minWifi']
+        del args['intervalSta']
+        del args['intervalTime']
         dataRate = (args['packetSize'] * args['nWifi'] / args['interPacketInterval']) / 1e6
     elif args['scenario'] == 'scenario_dynamic':
         del args['interPacketInterval']
@@ -94,11 +97,10 @@ if __name__ == '__main__':
         del args['thrPath']
         dataRate = min(115, args['dataRate'] * args['nWifi'])
 
-    # if os.environ.get('NS3_DIR'):
-    #     ns3_path = os.environ['NS3_DIR']
-    # if not ns3_path:
-    #     raise ValueError('ns-3 path not found')
-    ns3_path = "/home/student/ns-allinone-3.42/ns-3.42"
+    if os.environ.get('NS3_DIR'):
+        ns3_path = os.environ['NS3_DIR']
+    if not ns3_path:
+        raise ValueError('ns-3 path not found')
 
     agent = args['agentName']
     mempool_key = args.pop('mempoolKey')
@@ -152,8 +154,7 @@ if __name__ == '__main__':
 
     # set up the agent
     if agent == 'wifi':
-        rlib = None
-        context = None
+        rlib, context, agent_id = None, None, None
     elif agent == 'MLDR':
         rlib = RLib(
             agent_type=ThompsonSampling,
@@ -163,7 +164,8 @@ if __name__ == '__main__':
             logger_params={'plots_dir': '.'},
             logger_sources='n_successful'
         )
-        rlib.init(seed)
+        agent_id = rlib.init(seed)
+        seed += 1
         context = np.ones(N_CW * N_RTS_CTS * N_AMPDU)
     else:
         raise ValueError('Invalid agent type')
@@ -182,8 +184,13 @@ if __name__ == '__main__':
                 if data is None:
                     break
 
+                if data.env.reset_agent:
+                    agent_id = rlib.init(seed)
+                    seed += 1
+
                 n_successful, n_failed = normalize_rewards(data.env)
                 action = rlib.sample(
+                    agent_id=agent_id,
                     sample_observations={'context': context},
                     update_observations={'action': action, 'n_successful': n_successful, 'n_failed': n_failed, 'delta_time': ns3_args['interactionTime']}
                 )

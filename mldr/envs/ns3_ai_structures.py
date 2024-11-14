@@ -9,7 +9,8 @@ class Env(Structure):
         ('latency', c_double),
         ('plr', c_double),
         ('throughput', c_double),
-        ('time', c_double)
+        ('time', c_double),
+        ('reset_agent', c_bool)
     ]
 
 

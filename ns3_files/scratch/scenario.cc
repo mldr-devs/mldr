@@ -32,6 +32,7 @@ struct sEnv
   double plr;
   double throughput;
   double time;
+  bool reset_agent;
 } Packed;
 
 struct sAct
@@ -506,6 +507,7 @@ ExecuteAction (std::string agentName, double dataRate, double distance, uint32_t
       env->plr = PLR;
       env->throughput = throughput;
       env->time = Simulator::Now ().GetSeconds () - fuzzTime;
+      env->reset_agent = false;
       m_env->SetCompleted ();
 
       auto act = m_env->ActionGetterCond ();
