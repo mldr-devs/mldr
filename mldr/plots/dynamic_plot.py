@@ -22,7 +22,7 @@ if __name__ == '__main__':
         agent = file.split('_')[1:3]
         agent = '_'.join(agent) if agent[1] == 'RTS' else agent[0]
         agent = AGENT_NAMES[agent]
-        agent_results[agent] = df.iloc[1:, -2].values.reshape(-1, 2).mean(axis=1)
+        agent_results[agent] = df.iloc[3:, -2].values.reshape(-1, 4).mean(axis=1)
 
     _, ax = plt.subplots(figsize=(2 * COLUMN_WIDTH, COLUMN_HIGHT))
 
@@ -38,19 +38,18 @@ if __name__ == '__main__':
     y = sum([2 * [min_wifi + i * interval_sta] for i in range(n_steps)], [])
     ax2.plot(x, y, color='black', linewidth=0.5)
     ax2.set_ylim(0, n_wifi)
-    ax2.set_yticks(range(0, n_wifi + 1, 2 * interval_sta))
-    ax2.set_ylabel('Number of devices')
+    ax2.set_ylabel('Number of stations')
 
-    ax.set_xlabel('Time [s]')
-    ax.set_ylabel('Throughput [Mb/s]')
+    ax.set_xlabel('Steps')
+    ax.set_ylabel('Aggregated throughput [Mb/s]')
     ax.set_ylim(0, 125)
     ax.set_xlim(0, xs[-1])
     ax.set_xticks(range(0, int(xs[-1]) + 1, 100))
     ax.grid()
 
-    ax.plot([None], [None], color='black', linewidth=0.5, label='Number of devices')
-    ax.plot([None], [None], color='r', linewidth=0.5, linestyle='--', label='Reset agent')
-    ax.legend(ncol=2, bbox_to_anchor=(0.52, 0.18), loc='center')
+    ax.plot([None], [None], color='black', linewidth=0.5, label='Number of stations')
+    ax.plot([None], [None], color='r', linewidth=0.5, linestyle='--', label='Agent reset')
+    ax.legend(ncol=5, bbox_to_anchor=(0.55, 0.1), loc='center')
 
     plt.tight_layout()
     plt.savefig(f'dynamic.pdf', bbox_inches='tight')

@@ -33,8 +33,8 @@ if __name__ == '__main__':
         served = ys.cumsum() / (n_files / len(AGENT_NAMES))
         plt.plot(served, xs, label=agent, color=cmap[i], linewidth=1)
 
-    plt.xlabel('Device \#')
-    plt.ylabel('Throughput per device [kb/s]')
+    plt.xlabel('Station number')
+    plt.ylabel('Throughput per station [kb/s]')
     plt.ylim(0, 50)
     plt.xlim(0, 250)
     plt.grid()
