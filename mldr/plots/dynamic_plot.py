@@ -10,8 +10,9 @@ from mldr.plots.config import get_cmap, AGENT_NAMES, COLUMN_WIDTH, COLUMN_HIGHT
 if __name__ == '__main__':
     min_wifi = 5
     n_wifi = 50
+    interaction_time = 0.5
     interval_sta = 5
-    interval_time = 100
+    interval_time = 100 / interaction_time
     n_steps = (n_wifi - min_wifi) // interval_sta + 1
 
     cmap = get_cmap(n=len(AGENT_NAMES))
