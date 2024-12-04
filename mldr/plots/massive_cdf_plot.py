@@ -10,12 +10,10 @@ from mldr.plots.config import get_cmap, AGENT_NAMES
 if __name__ == '__main__':
     cmap = get_cmap(n=len(AGENT_NAMES))
     agent_results = defaultdict(lambda: defaultdict(float))
-    n_files = 0
 
     for file in glob(f'../../scripts/massive_*_n*_d*.txt'):
         with open(file) as f:
             lines = f.readlines()
-            n_files += 1
 
         agent = file.split('_')[1:3]
         agent = '_'.join(agent) if agent[1] == 'RTS' else agent[0]
@@ -30,15 +28,15 @@ if __name__ == '__main__':
         idx = np.argsort(xs)
         xs, ys = xs[idx], ys[idx]
         xs, ys = np.concatenate(([0], xs)), np.concatenate(([0], ys))
-        served = ys.cumsum() / (n_files / len(AGENT_NAMES))
-        plt.plot(served, xs, label=agent, color=cmap[i], linewidth=1)
+        served = ys.cumsum() / ys.sum()
+        plt.plot(xs, served, label=agent, color=cmap[i], linewidth=1)
 
-    plt.xlabel('Station number')
-    plt.ylabel('Throughput per station [kb/s]')
-    plt.ylim(0, 50)
-    plt.xlim(0, 250)
+    plt.ylabel('CDF')
+    plt.xlabel('Throughput per station [kb/s]')
+    plt.ylim(0, 1)
+    plt.xlim(0, xs[-1])
     plt.grid()
-    plt.legend(loc='lower right')
+    plt.legend(loc='upper left')
     plt.tight_layout()
     plt.savefig(f'massive_cdf.pdf', bbox_inches='tight')
     plt.show()
