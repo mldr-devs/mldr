@@ -28,7 +28,7 @@ PLOT_PARAMS = {
 AGENT_NAMES = {
     '80211': '802.11',
     '80211_RTS': '802.11 RTS/CTS',
-    'MLDR': 'MLDR'
+    'MLDR': 'SpecNet'
 }
 
 

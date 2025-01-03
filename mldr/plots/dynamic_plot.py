@@ -45,7 +45,7 @@ if __name__ == '__main__':
     ax.set_ylabel('Aggregated throughput [Mb/s]')
     ax.set_ylim(0, 125)
     ax.set_xlim(0, xs[-1])
-    ax.set_xticks(range(0, int(xs[-1]) + 1, 100))
+    ax.set_xticks(range(0, int(xs[-1]) + 1, 200))
     ax.grid()
 
     ax.plot([None], [None], color='black', linewidth=0.5, label='Number of stations')
