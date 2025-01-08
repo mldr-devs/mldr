@@ -43,7 +43,7 @@ if __name__ == '__main__':
             meanprops=dict(marker='o', markerfacecolor='white', markeredgecolor='gray', markersize=2, markeredgewidth=0.5)
         )
 
-    plt.xlabel('Step')
+    plt.xlabel('Control period')
     plt.ylabel('Latency [ms]')
     plt.xlim(0, 370)
     plt.yscale('log')

@@ -18,7 +18,7 @@ if __name__ == '__main__':
     cmap = get_cmap(n=len(AGENT_NAMES))
     agent_results = {}
 
-    for file in glob(f'../../scripts/dynamic_*_m*_n*_s*.csv'):
+    for file in glob(f'../../scripts/results/dynamic_*_m*_n*_s*.csv'):
         df = pd.read_csv(file)
         agent = file.split('_')[1:3]
         agent = '_'.join(agent) if agent[1] == 'RTS' else agent[0]
@@ -41,8 +41,8 @@ if __name__ == '__main__':
     ax2.set_ylim(0, n_wifi)
     ax2.set_ylabel('Number of stations')
 
-    ax.set_xlabel('Steps')
-    ax.set_ylabel('Aggregated throughput [Mb/s]')
+    ax.set_xlabel('Control period')
+    ax.set_ylabel('Aggregate throughput [Mb/s]')
     ax.set_ylim(0, 125)
     ax.set_xlim(0, xs[-1])
     ax.set_xticks(range(0, int(xs[-1]) + 1, 200))
